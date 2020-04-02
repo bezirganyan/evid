@@ -12,25 +12,28 @@ def compute_dead(model):
 def compute_healed(model):
     return sum(agent.healed for agent in model.schedule.agents)
 
+def compute_not_infected(model):
+    return sum(not agent.healed and not agent.infected and not agent.dead for agent in model.schedule.agents)
+
 def get_isol_boxes(n, width, height):
     boxes = [(i*width/n, i*height/n) for i in range(1, n)]
 
     return boxes
 
-class CoronaAgent(Agent):
-    def __init__(self, unique_id, model):
+class EpiAgent(Agent):
+    def __init__(self, unique_id, model, transmission_prob=0.4, mortality_rate=-0.004, inf_radius=0.3, healing_period=14, travel_prob=0.05, healthcare_potential=0.02):
         super().__init__(unique_id, model)
         self.infected = False
         self.dead = False
         self.healed = False
-        self.transmission_prob = 0.4
-        self.mortality_rate = 0.004
-        self.inf_radius = 0.3
+        self.transmission_prob = transmission_prob
+        self.mortality_rate = mortality_rate
+        self.inf_radius = inf_radius
+        self.healing_period = healing_period
+        self.travel_prob = travel_prob
+        self.healthcare_potential = healthcare_potential
         self.prev_pos = None
         self.days_infected = 0
-        self.healing_period = 14
-        self.travel_prob = 0.05
-        self.healthcare_potential = 0.02
 
     def step(self):
         inf_perc = compute_infected(self.model) / len(self.model.schedule.agents)
@@ -95,16 +98,25 @@ class CoronaAgent(Agent):
         self.model.space.move_agent(self, (nx, ny))
 
 
-class CoronaModel(Model):
-    def __init__(self, N, width, height, n_boxes=3):
+class EpiModel(Model):
+    def __init__(self, population_number, width, height, n_boxes=3, transmission_prob=0.8, mortality_rate=0.004, inf_radius=0.3, healing_period=14, travel_prob=0.25, healthcare_potential=0.02):
         super().__init__()
-        self.num_agents = N
+        self.num_agents = population_number
         self.space = ContinuousSpace(width, height, False)
         self.schedule = RandomActivation(self)
         self.inf_radius = 0.3
         self.isol_boxes = get_isol_boxes(n_boxes, width, height)
+        
+        
+        agent_args = {'transmission_prob' : transmission_prob,
+        'mortality_rate' : mortality_rate,
+        'inf_radius' : inf_radius,
+        'healing_period' : healing_period,
+        'travel_prob' : travel_prob,
+        'healthcare_potential' : healthcare_potential}
+
         for i in range(self.num_agents):
-            a = CoronaAgent(i, self)
+            a = EpiAgent(i, self, **agent_args)
             self.schedule.add(a)
 
             onbox = True
@@ -117,13 +129,11 @@ class CoronaModel(Model):
                         b[1]-self.inf_radius < y < b[1]+self.inf_radius:
                         onbox = True
 
-
-
             self.space.place_agent(a, (x, y))
 
         self.random.choice(self.schedule.agents).infected = True
         
-        self.datacollector = DataCollector(model_reporters={"Infected": compute_infected, "Dead": compute_dead, "Healed": compute_healed})
+        self.datacollector = DataCollector(model_reporters={"Infected": compute_infected, "Dead": compute_dead, "Healed": compute_healed, "Not_infected": compute_not_infected})
 
     def step(self):
         self.datacollector.collect(self)
