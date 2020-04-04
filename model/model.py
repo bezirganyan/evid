@@ -1,73 +1,80 @@
+import enum
+
 from mesa import Agent, Model
-from mesa.time import RandomActivation
+from mesa.time import SimultaneousActivation
 from mesa.space import ContinuousSpace
 from mesa.datacollection import DataCollector
 
+
 def compute_infected(model):
-    return sum(agent.infected for agent in model.schedule.agents)
-    
+    return sum(agent.condition == Condition.Infected for agent in model.schedule.agents)
+
+
 def compute_dead(model):
-    return sum(agent.dead for agent in model.schedule.agents)
+    return sum(agent.condition == Condition.Dead for agent in model.schedule.agents)
+
 
 def compute_healed(model):
-    return sum(agent.healed for agent in model.schedule.agents)
+    return sum(agent.condition == Condition.Healed for agent in model.schedule.agents)
+
 
 def compute_not_infected(model):
-    return sum(not agent.healed and not agent.infected and not agent.dead for agent in model.schedule.agents)
+    return sum(agent.condition == Condition.Not_infected for agent in model.schedule.agents)
+
 
 def get_isol_boxes(n, width, height):
-    boxes = [(i*width/n, i*height/n) for i in range(1, n)]
+    return [(i*width/n, i*height/n) for i in range(1, n)]
 
-    return boxes
+
+def get_healthcare_potential(model):
+    return model.healthcare_potential * len(model.schedule.agents)
+    
+
+class Condition(enum.Enum):
+    Not_infected = 0
+    Infected = 1
+    Dead = 2
+    Healed = 3
+
 
 class EpiAgent(Agent):
-    def __init__(self, unique_id, model, transmission_prob=0.4, mortality_rate=-0.004, inf_radius=0.3, healing_period=14, travel_prob=0.05, healthcare_potential=0.02):
+    def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
-        self.infected = False
-        self.dead = False
-        self.healed = False
-        self.transmission_prob = transmission_prob
-        self.mortality_rate = mortality_rate
-        self.inf_radius = inf_radius
-        self.healing_period = healing_period
-        self.travel_prob = travel_prob
-        self.healthcare_potential = healthcare_potential
+        self.condition = Condition.Not_infected
         self.prev_pos = None
         self.days_infected = 0
 
     def step(self):
-        inf_perc = compute_infected(self.model) / len(self.model.schedule.agents)
-        if inf_perc > self.healthcare_potential:
-            self.healthcare_potential *= 0.999999999999
-            self.mortality_rate *= 1.000000000001
 
-        if self.dead:
+        if self.condition == Condition.Dead:
             return
-        if self.days_infected > self.healing_period:
-            self.healed = True
-            self.infected = False
+
+        if self.days_infected > self.model.healing_period:
+            self.condition = Condition.Healed
+
         p = self.random.random()
-        if self.infected:
+        if self.condition == Condition.Infected:
             self.days_infected += 1
-            if p < self.mortality_rate:
-                self.dead = True
-                self.infected = False
-                self.model.space.move_agent(self, (self.pos[0], self.model.space.height - 0.1))
+            if p < self.model.mortality_rate:
+                self.condition = Condition.Dead
+                self.model.space.move_agent(
+                    self, (self.pos[0], self.model.space.height - 0.1))
         self.move()
+
+    def advance(self):
         self.infect()
 
     def infect(self):
-        if not self.infected or self.healed or self.dead:
+        if not self.condition == Condition.Infected:
             return
 
-        neighbors = self.model.space.get_neighbors(self.pos, include_center=False, radius=self.inf_radius)
+        neighbors = self.model.space.get_neighbors(self.pos, include_center=False, radius=self.model.inf_radius)
 
         if len(neighbors) > 1:
             for n in neighbors:
                 r = self.random.random()
-                if r < self.transmission_prob and not n.dead and not n.healed:
-                    n.infected = True
-
+                if r < self.model.transmission_prob and n.condition == Condition.Not_infected:
+                    n.condition = Condition.Infected
 
     def move(self):
         if self.prev_pos:
@@ -75,66 +82,82 @@ class EpiAgent(Agent):
             self.prev_pos = None
             return
         x, y = self.pos
-        xd = self.random.uniform(-0.1, 0.1)
-        yd = self.random.uniform(-0.1, 0.1)
-        if self.random.random() < 0.0001 and not self.prev_pos:
+        xd = self.random.uniform(-0.1, 0.1) * self.model.travel_dist_factor
+        yd = self.random.uniform(-0.1, 0.1) * self.model.travel_dist_factor
+        if self.random.random() < self.model.travel_to_point_prob and not self.prev_pos:
             self.prev_pos = self.pos
             x, y = self.model.space.width / 2, self.model.space.height / 2
 
-        nx, ny = (min(self.model.space.width-0.1, max(0, x+xd)), (min(self.model.space.height-0.1, max(0, y+yd))))
+        nx, ny = (min(self.model.space.width-0.1, max(0, x+xd)),
+                  (min(self.model.space.height-0.1, max(0, y+yd))))
+
         for b in self.model.isol_boxes:
-            if b[0]-self.inf_radius < nx < b[0]+self.inf_radius:
-                if self.random.random() < self.travel_prob:
-                    nx += xd / abs(xd) * 2 * self.inf_radius
+            if b[0]-self.model.inf_radius < nx < b[0]+self.model.inf_radius:
+                if self.random.random() < self.model.travel_prob:
+                    nx += xd / abs(xd) * 2 * self.model.inf_radius
                 else:
                     nx = x
 
-            if b[1]-self.inf_radius < ny < b[1]+self.inf_radius:
-                if self.random.random() < self.travel_prob:
-                    ny += yd / abs(yd) * 2 * self.inf_radius
-                else: 
+            if b[1]-self.model.inf_radius < ny < b[1]+self.model.inf_radius:
+                if self.random.random() < self.model.travel_prob:
+                    ny += yd / abs(yd) * 2 * self.model.inf_radius
+                else:
                     ny = y
 
         self.model.space.move_agent(self, (nx, ny))
 
 
 class EpiModel(Model):
-    def __init__(self, population_number, width, height, n_boxes=3, transmission_prob=0.8, mortality_rate=0.004, inf_radius=0.3, healing_period=14, travel_prob=0.25, healthcare_potential=0.02):
+    def __init__(self, population_number, width, height, n_boxes=3, **kwargs):
         super().__init__()
         self.num_agents = population_number
         self.space = ContinuousSpace(width, height, False)
-        self.schedule = RandomActivation(self)
-        self.inf_radius = 0.3
+        self.schedule = SimultaneousActivation(self)
+
+        self.travel_dist_factor = kwargs.get('travel_dist_factor', 1)
+        self.transmission_prob = kwargs.get('transmission_prob', 0.4)
+        self.mortality_rate = kwargs.get('mortality_rate', 0.004)
+        self.inf_radius = kwargs.get('inf_radius', 0.5)
+        self.healing_period = kwargs.get('healing_period', 7)
+        self.travel_prob = kwargs.get('travel_prob', 0)
+        self.healthcare_potential = kwargs.get('healthcare_potential', None)
+        self.travel_to_point_prob = kwargs.get('travel_to_point_prob', 0)
         self.isol_boxes = get_isol_boxes(n_boxes, width, height)
-        
-        
-        agent_args = {'transmission_prob' : transmission_prob,
-        'mortality_rate' : mortality_rate,
-        'inf_radius' : inf_radius,
-        'healing_period' : healing_period,
-        'travel_prob' : travel_prob,
-        'healthcare_potential' : healthcare_potential}
 
         for i in range(self.num_agents):
-            a = EpiAgent(i, self, **agent_args)
+            a = EpiAgent(i, self)
             self.schedule.add(a)
 
             onbox = True
-            while onbox: 
+            while onbox:
                 onbox = False
                 x = self.random.randrange(self.space.width*1000) / 1000
                 y = self.random.randrange(self.space.height*1000) / 1000
                 for b in self.isol_boxes:
                     if b[0]-self.inf_radius < x < b[0]+self.inf_radius or \
-                        b[1]-self.inf_radius < y < b[1]+self.inf_radius:
+                            b[1]-self.inf_radius < y < b[1]+self.inf_radius:
                         onbox = True
 
             self.space.place_agent(a, (x, y))
 
-        self.random.choice(self.schedule.agents).infected = True
-        
-        self.datacollector = DataCollector(model_reporters={"Infected": compute_infected, "Dead": compute_dead, "Healed": compute_healed, "Not_infected": compute_not_infected})
+        self.random.choice(self.schedule.agents).condition = Condition.Infected
+
+        self.datacollector = DataCollector(model_reporters={
+                                           "Infected": compute_infected,
+                                           "Not_infected": compute_not_infected,
+                                           "Dead": compute_dead,
+                                           "Healed": compute_healed,
+                                           "Healthcare_potential": get_healthcare_potential})
 
     def step(self):
         self.datacollector.collect(self)
         self.schedule.step()
+
+        infected = compute_infected(self)
+        hp = self.healthcare_potential*len(self.schedule.agents)
+        if self.healthcare_potential and infected > hp:
+            self.healthcare_potential *= 0.97
+            self.mortality_rate *= 1.035
+            # self.healthcare_potential *= 1-(infected-hp)/len(self.schedule.agents)
+            # self.mortality_rate *= 1+(infected-hp)/len(self.schedule.agents)
+
