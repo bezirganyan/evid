@@ -7,7 +7,7 @@ from mesa.datacollection import DataCollector
 
 
 def compute_infected(model):
-    return sum(agent.condition == Condition.Infected for agent in model.schedule.agents)
+    return sum(agent.condition == Condition.Infected or agent.condition == Condition.Quaranteened for agent in model.schedule.agents)
 
 
 def compute_dead(model):
@@ -35,6 +35,7 @@ class Condition(enum.Enum):
     Infected = 1
     Dead = 2
     Healed = 3
+    Quaranteened = 4
 
 
 class EpiAgent(Agent):
@@ -49,11 +50,15 @@ class EpiAgent(Agent):
         if self.condition == Condition.Dead:
             return
 
+        if self.model.quaranteen_after > 0 and self.days_infected > self.model.quaranteen_after:
+            if self.random.random() < self.model.quaranteen_stricktness:
+                self.condition = Condition.Quaranteened
+
         if self.days_infected > self.model.healing_period:
             self.condition = Condition.Healed
 
         p = self.random.random()
-        if self.condition == Condition.Infected:
+        if self.condition == Condition.Infected or self.condition == Condition.Quaranteened:
             self.days_infected += 1
             if p < self.model.mortality_rate:
                 self.condition = Condition.Dead
@@ -122,6 +127,8 @@ class EpiModel(Model):
         self.travel_prob = kwargs.get('travel_prob', 0)
         self.healthcare_potential = kwargs.get('healthcare_potential', None)
         self.travel_to_point_prob = kwargs.get('travel_to_point_prob', 0)
+        self.quaranteen_after = kwargs.get('quaranteen_after', 0)
+        self.quaranteen_stricktness = kwargs.get('quaranteen_stricktness', 1)
         self.isol_boxes = get_isol_boxes(n_boxes, width, height)
 
         for i in range(self.num_agents):
@@ -156,8 +163,8 @@ class EpiModel(Model):
         infected = compute_infected(self)
         hp = self.healthcare_potential*len(self.schedule.agents)
         if self.healthcare_potential and infected > hp:
-            self.healthcare_potential *= 0.97
-            self.mortality_rate *= 1.035
-            # self.healthcare_potential *= 1-(infected-hp)/len(self.schedule.agents)
-            # self.mortality_rate *= 1+(infected-hp)/len(self.schedule.agents)
+            # self.healthcare_potential *= 0.97
+            # self.mortality_rate *= 1.035
+            self.healthcare_potential *= 1-(infected-hp)/len(self.schedule.agents) * 0.15
+            self.mortality_rate *= 1+(infected-hp)/len(self.schedule.agents) * 0.15
 

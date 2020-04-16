@@ -58,6 +58,10 @@ class Visualizer():
                 color = (1, 0, 0)
             elif a.condition == Condition.Healed:
                 color = (0, 1, 0)
+            elif a.condition == Condition.Healed:
+                color = (0, 1, 0)
+            elif a.condition == Condition.Quaranteened:
+                color = (1, 0.5, 0)
             else:
                 color = (0, 0, 1)
             colors.append(color)
