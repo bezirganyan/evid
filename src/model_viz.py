@@ -1,7 +1,8 @@
-from .model import EpiModel, Condition
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
 import numpy as np
+from matplotlib.animation import FuncAnimation
+
+from src.utils import Condition
 
 
 class Visualizer():
