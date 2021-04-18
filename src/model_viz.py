@@ -49,7 +49,7 @@ class Visualizer():
     def do_step(self):
         self.model.step()
         xpos, ypos, colors = [], [], []
-        for a in self.model.schedule.agents:
+        for a in self.model.scheduler.agents:
             xpos.append(a.pos[0])
             ypos.append(a.pos[1])
 

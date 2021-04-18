@@ -1,15 +1,15 @@
 {
   "districts": [
   {
+    "id": 0,
     "name": "Ajapnyak",
     "buildings_amount": 12,
-    "bounding_coordinates": [[10,12],[13,15],[8,17]],
     "population": 30
   },
   {
+    "id": 1,
     "name": "Davitashen",
     "buildings_amount": 15,
-    "bounding_coordinates": [[15,22],[20,25],[23,28]],
     "population": 42
   }
 ]
