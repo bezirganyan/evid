@@ -12,7 +12,7 @@ class EpiNetworkGrid(NetworkGrid):
     def _place_agent(self, agent: Agent, node_id: int) -> None:
         """ Place the agent at the correct node. """
         building = self.G.nodes[node_id]["building"]
-        apartment = None
+        agent.current_position = node_id
         if not building.public:
             if not agent.address:
                 apartment = random.randint(1, self.G.nodes[node_id]["building"].n_apartments)

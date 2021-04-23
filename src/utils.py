@@ -38,3 +38,5 @@ class Condition(enum.Enum):
     Infected = 1
     Healed = 2
     Quaranteened = 3
+    Dead = 4
+
