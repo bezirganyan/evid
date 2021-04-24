@@ -1,16 +1,308 @@
 {
   "districts": [
-  {
-    "id": 0,
-    "name": "Ajapnyak",
-    "buildings_amount": 12,
-    "population": 30
-  },
-  {
-    "id": 1,
-    "name": "Davitashen",
-    "buildings_amount": 15,
-    "population": 42
+    {
+      "uid": 12,
+      "name": "Ajapnyak",
+      "n_buildings": 100,
+      "population": 109600
+    },
+    {
+      "uid": 1,
+      "name": "Davitashen",
+      "n_buildings": 100,
+      "population": 42207
+    },
+    {
+      "uid": 2,
+      "name": "Arabkir",
+      "n_buildings": 100,
+      "population": 117704
+    },
+    {
+      "uid": 3,
+      "name": "Qanaqer zeuytun",
+      "n_buildings": 100,
+      "population": 74400
+    },
+    {
+      "uid": 4,
+      "name": "Nor-norq",
+      "n_buildings": 100,
+      "population": 129400
+    },
+    {
+      "uid": 5,
+      "name": "Norq marash",
+      "n_buildings": 100,
+      "population": 11300
+    },
+    {
+      "uid": 6,
+      "name": "Kentron",
+      "n_buildings": 100,
+      "population": 126600
+    },
+    {
+      "uid": 7,
+      "name": "Erebuni",
+      "n_buildings": 100,
+      "population": 126300
+    },
+    {
+      "uid": 8,
+      "name": "Shengavit",
+      "n_buildings": 100,
+      "population": 137400
+    },
+    {
+      "uid": 9,
+      "name": "Malatia",
+      "n_buildings": 100,
+      "population": 142600
+    },
+    {
+      "uid": 10,
+      "name": "Avan",
+      "n_buildings": 100,
+      "population": 53100
+    },
+    {
+      "uid": 11,
+      "name": "Nubarashen",
+      "n_buildings": 100,
+      "population": 9700
+    }
+  ],
+  "examples": {
+    "classroom": {
+      "oset": 1,
+      "emittPart": {
+        "vol": {
+          "value": 2
+        },
+        "mask": {
+          "value": 0
+        },
+        "speak_frac": {
+          "value": 10
+        },
+        "atv": {
+          "value": 10
+        }
+      },
+      "aeroPart": {
+        "mwd": {
+          "value": 5
+        },
+        "conc_b": {
+          "value": 0.06
+        },
+        "conc_s": {
+          "value": 0.6
+        },
+        "depo": {
+          "value": 0.5
+        }
+      },
+      "roomPart": {
+        "rlwr": {
+          "value": 0.35
+        },
+        "area": {
+          "value": 60
+        },
+        "height": {
+          "value": 3
+        }
+      },
+      "virusPart": {
+        "d50": {
+          "value": 316
+        },
+        "conc": {
+          "value": 500000000,
+          "notation": 1
+        },
+        "lifetime": {
+          "value": 1.7
+        }
+      },
+      "expPart": {
+        "duration": {
+          "value": 12
+        },
+        "mask": {
+          "value": 0
+        },
+        "people": {
+          "value": 24
+        },
+        "inz": {
+          "value": 100
+        },
+        "dzif": {
+          "value": 3
+        },
+        "reps": {
+          "value": 100
+        }
+      },
+      "oset_domele": {
+        "sizzle1619278751058": {
+          "parentNode": [
+            11193,
+            96,
+            false
+          ]
+        }
+      }
+    },
+    "office": {
+      "oset": 1,
+      "emittPart": {
+        "vol": {
+          "value": 2
+        },
+        "speak_frac": {
+          "value": 10
+        }
+      },
+      "roomPart": {
+        "area": {
+          "value": 40
+        },
+        "height": {
+          "value": 3
+        }
+      },
+      "expPart": {
+        "duration": {
+          "value": 16
+        },
+        "people": {
+          "value": 4
+        }
+      },
+      "oset_domele": {
+        "sizzle1619278751058": {
+          "parentNode": [
+            11457,
+            96,
+            false
+          ]
+        }
+      }
+    },
+    "reception": {
+      "oset": 1,
+      "emittPart": {
+        "vol": {
+          "value": 2
+        },
+        "speak_frac": {
+          "value": 25
+        }
+      },
+      "roomPart": {
+        "area": {
+          "value": 100
+        },
+        "height": {
+          "value": 4
+        }
+      },
+      "expPart": {
+        "duration": {
+          "value": 3
+        },
+        "people": {
+          "value": 100
+        }
+      },
+      "oset_domele": {
+        "sizzle1619278751058": {
+          "parentNode": [
+            29122,
+            96,
+            false
+          ]
+        }
+      }
+    },
+    "choir": {
+      "oset": 1,
+      "emittPart": {
+        "vol": {
+          "value": 5.32
+        },
+        "speak_frac": {
+          "value": 60
+        }
+      },
+      "roomPart": {
+        "area": {
+          "value": 100
+        },
+        "height": {
+          "value": 4
+        }
+      },
+      "expPart": {
+        "duration": {
+          "value": 3
+        },
+        "people": {
+          "value": 25
+        }
+      },
+      "oset_domele": {
+        "sizzle1619278751058": {
+          "parentNode": [
+            29570,
+            96,
+            false
+          ]
+        }
+      }
+    },
+    "super": {
+      "oset": 1,
+      "emittPart": {
+        "vol": {
+          "value": 3
+        },
+        "speak_frac": {
+          "value": 5
+        }
+      },
+      "roomPart": {
+        "rlwr": {
+          "value": 4
+        },
+        "area": {
+          "value": 200
+        },
+        "height": {
+          "value": 4.5
+        }
+      },
+      "expPart": {
+        "duration": {
+          "value": 1
+        },
+        "people": {
+          "value": 10
+        }
+      },
+      "oset_domele": {
+        "sizzle1619278751058": {
+          "parentNode": [
+            7544,
+            96,
+            false
+          ]
+        }
+      }
+    }
   }
-]
 }

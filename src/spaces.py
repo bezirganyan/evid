@@ -12,26 +12,12 @@ class EpiNetworkGrid(NetworkGrid):
     def _place_agent(self, agent: Agent, node_id: int) -> None:
         """ Place the agent at the correct node. """
         building = self.G.nodes[node_id]["building"]
-        agent.current_position = node_id
-        if not building.public:
-            if not agent.address:
-                apartment = random.randint(1, self.G.nodes[node_id]["building"].n_apartments)
-                if apartment not in building.apartments:
-                    building.apartments[apartment] = []
-                agent.address = (node_id, apartment)
-            else:
-                apartment = agent.address[1]
-            building.apartments[apartment].append(agent)
-        else:
-            building.apartments[0].append(agent)
+        building.place_agent(agent)
 
     def _remove_agent(self, agent: Agent, node_id: int) -> None:
         """ Remove an agent from a node. """
         building = self.G.nodes[node_id]["building"]
-        if not building.public:
-            building.apartments[agent.address[1]].remove(agent)
-        else:
-            building.apartments[0].remove(agent)
+        building.remove_agent()
 
     def is_cell_empty(self, node_id: int) -> bool:
         """ Returns a bool of the contents of a cell. """

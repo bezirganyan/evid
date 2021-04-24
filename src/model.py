@@ -9,7 +9,6 @@ from mesa.time import SimultaneousActivation
 from shapely import wkt
 from tqdm import tqdm
 from datetime import datetime, timedelta
-import numpy as np
 
 from src.spaces import EpiNetworkGrid
 from src.structures import EpiAgent, District, Building
@@ -30,7 +29,7 @@ class EpiModel(Model):
                  age_dist: Tuple[float] = None,
                  data_frame: pd.DataFrame = None,
                  graph: nx.Graph = None,
-                 **kwargs):
+                 initial_infected=10, **kwargs):
         super().__init__()
         self.date = start_date
         self.districts = dict()
@@ -43,11 +42,11 @@ class EpiModel(Model):
         self.scheduler = SimultaneousActivation(self)
         self.travel_dist_factor = kwargs.get('travel_dist_factor', 1)
         self.transmission_prob = kwargs.get('transmission_prob', 0.4)
-        self.mortality_rate = kwargs.get('mortality_rate', 0.004)
+        self.mortality_rate = kwargs.get('mortality_rate', 0.0004)
         self.inf_radius = kwargs.get('inf_radius', 0.5)
-        self.healing_period = kwargs.get('healing_period', 7)
+        self.healing_period = kwargs.get('healing_period', 7*24)
         self.travel_prob = kwargs.get('travel_prob', 0)
-        self.healthcare_potential = kwargs.get('healthcare_potential', 0)
+        self.hospital_beds = kwargs.get('hospital_beds', 5000)
         self.travel_to_point_prob = kwargs.get('travel_to_point_prob', 0)
         self.quaranteen_after = kwargs.get('quaranteen_after', 0)
         self.quaranteen_stricktness = kwargs.get('quaranteen_stricktness', 1)
@@ -63,7 +62,8 @@ class EpiModel(Model):
         for d in self.districts.values():
             self.distribute_people(d, age_dist)
 
-        self.random.choice(self.scheduler.agents).condition = Condition.Infected
+        for a in self.random.choices(self.scheduler.agents, k=initial_infected):
+            a.condition = Condition.Infected
 
         self.datacollector = DataCollector(model_reporters={
             "Infected": compute_infected,
