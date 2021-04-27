@@ -20,7 +20,7 @@ def compute_not_infected(model):
 
 
 def get_healthcare_potential(model):
-    return model.healthcare_potential * len(model.scheduler.agents)
+    return model.hospital_beds
 
 
 def compute_inf_prob(duration: int = 1, rlwr=0.35, lifetime=1.7, area=100, height=4, d50=316, speak_frac=3, conc=5e+8,

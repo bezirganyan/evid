@@ -76,12 +76,6 @@ class EpiModel(Model):
     def step(self):
         self.datacollector.collect(self)
         self.scheduler.step()
-
-        infected = compute_infected(self)
-        hp = self.healthcare_potential * len(self.scheduler.agents)
-        if self.healthcare_potential and infected > hp:
-            self.healthcare_potential *= 1 - (infected - hp) / len(self.scheduler.agents) * 0.15
-            self.mortality_rate *= 1 + (infected - hp) / len(self.scheduler.agents) * 0.15
         self.date = self.date + timedelta(hours=1)
 
     def create_graph(self, data_frame: pd.DataFrame, building_params):
@@ -103,7 +97,8 @@ class EpiModel(Model):
         for ind in tqdm(range(district.population)):  # TODO remove tqdm
             while True:
                 building_osmid = random.choice(district.buildings)
-                if not self.graph.nodes[building_osmid]["building"].public:
+                b = self.graph.nodes[building_osmid]["building"]
+                if not b.public:
                     break
             age = random.choices(range(len(age_dist)), weights=age_dist)[0]
             gender = random.choices([0, 1], weights=gender_dist)[0]

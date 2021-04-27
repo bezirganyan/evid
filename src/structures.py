@@ -35,12 +35,11 @@ class Building:
     def place_agent(self, agent):
         if self.building_type == 'hospital':
             if agent.model.hospital_beds <= 0:
-                agent.move(agent.address[0])
+                agent.model.grid.place_agent(agent, agent.address[0])
                 return
             else:
                 agent.model.hospital_beds -= 1
                 agent.in_hosptal = True
-        agent.current_position = self.index
         if not self.public:
             if not agent.address:
                 apartment = random.randint(1, self.n_apartments)
@@ -52,6 +51,7 @@ class Building:
             self.apartments[apartment].append(agent)
         else:
             self.apartments[0].append(agent)
+        agent.pos = self.index
 
     def remove_agent(self, agent):
         if self.building_type == 'hospital':
@@ -59,7 +59,10 @@ class Building:
         if not self.public:
             self.apartments[agent.address[1]].remove(agent)
         else:
+            assert agent.pos == self.index
             self.apartments[0].remove(agent)
+
+        agent.pos = None
 
     def __repr__(self):
         return f"BUILDING\n" \
@@ -81,7 +84,6 @@ class EpiAgent(Agent):
         self.gender = gender
         self.age = age
         self.address = None
-        self.current_position = None
         self.in_hospital = False
         self.is_severe = False
 
@@ -98,7 +100,7 @@ class EpiAgent(Agent):
             self.days_infected += 1
             if p < self.model.mortality_rate:
                 self.model.dead_count += 1
-                self.model.grid._remove_agent(self, self.current_position)
+                self.model.grid._remove_agent(self, self.pos)
                 self.condition = Condition.Dead
             return
         self.move()
@@ -110,14 +112,14 @@ class EpiAgent(Agent):
         if self.condition == Condition.Dead:
             self.model.scheduler.remove(self)
         if self.condition == Condition.Infected:
-            if self.model.graph.nodes[self.current_position]['building'].public:
-                same_place_agents = self.model.graph.nodes[self.current_position]['building'].apartments[0]
-                building_type = self.model.graph.nodes[self.current_position]['building'].building_type
+            if self.model.graph.nodes[self.pos]['building'].public:
+                same_place_agents = self.model.graph.nodes[self.pos]['building'].apartments[0]
+                building_type = self.model.graph.nodes[self.pos]['building'].building_type
                 n_contact_people = contact_prob[building_type] * len(same_place_agents)
                 n_contact_people = math.ceil(math.ceil(n_contact_people))
                 contacted_agents = choice(same_place_agents, size=n_contact_people)
             else:
-                same_place_agents = self.model.graph.nodes[self.current_position]['building'].apartments[
+                same_place_agents = self.model.graph.nodes[self.pos]['building'].apartments[
                     self.address[1]]
                 contacted_agents = same_place_agents
 
@@ -138,7 +140,6 @@ class EpiAgent(Agent):
         else:
             to_node = random.choice(self.model.osmid_by_building_type[to_node_type]['osmids'])
         self.model.grid.move_agent(self, to_node)
-        self.current_position = to_node
 
     def __repr__(self):
         return f"Agent\n" \
@@ -147,6 +148,6 @@ class EpiAgent(Agent):
                f"condition: {self.condition},\n" \
                f"days_infected: {self.days_infected},\n" \
                f"address: {self.address},\n" \
-               f"current_position: {self.current_position}\n" \
+               f"current_position: {self.pos}\n" \
                f"gender: {self.gender},\n" \
                f"age: {self.age}\n"
