@@ -3,7 +3,7 @@ import math
 
 
 def compute_infected(model):
-    return sum(agent.condition == Condition.Infected or agent.condition == Condition.Quaranteened for agent in
+    return sum(agent.condition == Condition.Infected for agent in
                model.scheduler.agents)
 
 
@@ -77,5 +77,10 @@ class Condition(enum.Enum):
     Not_infected = 0
     Infected = 1
     Healed = 2
-    Quaranteened = 3
-    Dead = 4
+    Dead = 3
+
+
+class Severity(enum.Enum):
+    asymptomatic = 0
+    mild = 1
+    severe = 2

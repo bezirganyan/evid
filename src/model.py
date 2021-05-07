@@ -22,14 +22,16 @@ class EpiModel(Model):
                  start_date: datetime,
                  moving_distribution_tensor,
                  building_types: List,
-                 mask_prob,
-                 infection_prob,
-                 mask_rule: int = 0,
                  building_params: Tuple[Tuple[int], Tuple[float]] = None,
                  age_dist: Tuple[float] = None,
                  data_frame: pd.DataFrame = None,
                  graph: nx.Graph = None,
-                 initial_infected=10, **kwargs):
+                 initial_infected=10,
+                 step_size=1,
+                 hospital_efficiency=0.3,
+                 severity_dist: object = {"asymptomatic": 0.24, "mild": 0.56, "severe": 0.2},
+                 infection_countdown_dist: object = {"loc": 48, "scale": 7},
+                 **kwargs):
         super().__init__()
         self.date = start_date
         self.districts = dict()
@@ -40,30 +42,27 @@ class EpiModel(Model):
         self.num_agents = population_number
         self.grid = EpiNetworkGrid(self.graph)
         self.scheduler = SimultaneousActivation(self)
-        self.travel_dist_factor = kwargs.get('travel_dist_factor', 1)
-        self.transmission_prob = kwargs.get('transmission_prob', 0.4)
-        self.mortality_rate = kwargs.get('mortality_rate', 0.0004)
-        self.inf_radius = kwargs.get('inf_radius', 0.5)
-        self.healing_period = kwargs.get('healing_period', 7*24)
-        self.travel_prob = kwargs.get('travel_prob', 0)
+        self.mortality_rate = kwargs.get('mortality_rate',
+                                         {"asymptomatic": 0.0000001, "mild": 0.0002,
+                                          "severe": 0.0004})  # TODO numbers should be changed
+        self.healing_period = kwargs.get('healing_period', 14 * 24)
         self.hospital_beds = kwargs.get('hospital_beds', 5000)
-        self.travel_to_point_prob = kwargs.get('travel_to_point_prob', 0)
-        self.quaranteen_after = kwargs.get('quaranteen_after', 0)
-        self.quaranteen_stricktness = kwargs.get('quaranteen_stricktness', 1)
         # self.osmid_by_building_type = {'cafe':{'index':0,'osmid':[]} , 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [],
-        #                                8: []}  # TODO - 8 should be changed as it is workplace
+        #                                8: []}
         self.building_types = building_types
         self.osmid_by_building_type = dict()
         self.moving_distribution_tensor = moving_distribution_tensor
-        self.mask_rule = mask_rule
-        self.mask_prob = mask_prob
-        self.infection_prob = infection_prob
+        self.severity_dist = severity_dist
+        self.infection_countdown_dist = infection_countdown_dist
+        self.step_size = step_size
+        self.distribute_osmid_by_building_type(data_frame, building_types)
+        self.hospital_efficiency = hospital_efficiency
 
         for d in self.districts.values():
             self.distribute_people(d, age_dist)
 
         for a in self.random.choices(self.scheduler.agents, k=initial_infected):
-            a.condition = Condition.Infected
+            a.set_infected()
 
         self.datacollector = DataCollector(model_reporters={
             "Infected": compute_infected,
@@ -71,12 +70,24 @@ class EpiModel(Model):
             "Dead": compute_dead,
             "Healed": compute_healed,
             "Healthcare_potential": get_healthcare_potential})
-        self.distribute_osmid_by_building_type(data_frame, building_types)
 
     def step(self):
         self.datacollector.collect(self)
         self.scheduler.step()
-        self.date = self.date + timedelta(hours=1)
+        self.date = self.date + timedelta(hours=self.step_size)
+
+    def distribute_osmid_by_building_type(self, data_frame, building_types):
+        groups_df = data_frame[data_frame['type'] != 'building']
+        groups_df = groups_df.groupby('type')['osmid'].apply(list).reset_index(name='osmid')
+        for ind, t in enumerate(building_types[:-1]):
+            self.osmid_by_building_type[ind] = {'type': t,
+                                                'osmids': groups_df[groups_df['type'] == t]['osmid'].values[0]}
+        other_work_places = []
+        for key in self.osmid_by_building_type:
+            if key != 8 and key != 2:
+                other_work_places += self.osmid_by_building_type[key]['osmids']
+        self.osmid_by_building_type[9] = {'type': 9,
+                                          'osmids': other_work_places}
 
     def create_graph(self, data_frame: pd.DataFrame, building_params):
         if data_frame is None:
@@ -84,7 +95,7 @@ class EpiModel(Model):
         graph = nx.Graph()
         for building in data_frame.iterrows():
             building = building[1]
-            b = Building(building[0], wkt.loads(building[1]), building[3], building[2])  # district problem
+            b = Building(building[0], wkt.loads(building[1]), building[3], building[2])
             self.districts[building[3]].buildings.append(building[0])
             floors_amount = random.choices(building_params[0], weights=building_params[1])[0]
             b.n_apartments = get_apartments_number(floors_amount)
@@ -94,7 +105,7 @@ class EpiModel(Model):
     def distribute_people(self, district: District,
                           age_dist: Tuple[float],
                           gender_dist: Tuple[float] = (0.5, 0.5)):
-        for ind in tqdm(range(district.population)):  # TODO remove tqdm
+        for ind in tqdm(range(district.population)):
             while True:
                 building_osmid = random.choice(district.buildings)
                 b = self.graph.nodes[building_osmid]["building"]
@@ -102,7 +113,41 @@ class EpiModel(Model):
                     break
             age = random.choices(range(len(age_dist)), weights=age_dist)[0]
             gender = random.choices([0, 1], weights=gender_dist)[0]
-            agent = EpiAgent(int(f'{building_osmid}{ind}'), self, age, gender)
+            work_place = None
+            study_place = None
+            if age == 0:
+                kindergarten_or_none_types = ['kindergarten', None]
+                kindergarten_or_none = random.choices(kindergarten_or_none_types, [0.3, 0.7])[0]
+                study_place = (7, random.choice(
+                    self.osmid_by_building_type[3]['osmids'])) if kindergarten_or_none is not None else None
+            elif age == 1:
+                school_or_none_types = ['school', None]
+                school_or_none = random.choices(school_or_none_types, [0.3, 0.7])[0]
+                study_place = (
+                    7, random.choice(self.osmid_by_building_type[4]['osmids'])) if school_or_none is not None else None
+            elif age == 2:
+                work_or_study_types = ['work', 'study', 'both', None]
+                work_or_study = random.choices(work_or_study_types,
+                                               (0.3, 0.1, 0.55, 0.2))[0]  # TODO distribution should be changed
+                if work_or_study == 'work':
+                    work_place = (8, random.choices((random.choice(self.osmid_by_building_type[9]['osmids']),
+                                                     random.choice(self.osmid_by_building_type[8]['osmids'])),
+                                                    weights=(0.9, 0.1))[0])
+                elif work_or_study == 'study':
+                    study_place = (7, random.choice(self.osmid_by_building_type[7]['osmids']))
+                elif work_or_study == 'both':
+                    study_place = (5, random.choice(self.osmid_by_building_type[7]['osmids']))
+                    work_place = (4, random.choices((random.choice(self.osmid_by_building_type[9]['osmids']),
+                                                     random.choice(self.osmid_by_building_type[8]['osmids'])),
+                                                    weights=(0.9, 0.1))[0])
+            elif age == 3:
+                work_none_types = ['work', None]
+                work_none = random.choices(work_none_types, [0.82, 0.18])[0]
+                work_places = [random.choice(self.osmid_by_building_type[9]['osmids']),
+                               random.choice(self.osmid_by_building_type[8]['osmids'])]
+                work_place = (8, (random.choices(work_places,
+                                                 weights=(0.9, 0.1))[0])) if work_none is not None else None
+            agent = EpiAgent(int(f'{building_osmid}{ind}'), self, age, gender, work_place, study_place)
             self.grid.place_agent(agent, building_osmid)
             self.scheduler.add(agent)
 
@@ -113,10 +158,3 @@ class EpiModel(Model):
                 if d["building"].building_type == t:
                     ids.append(p)
         return ids
-
-    def distribute_osmid_by_building_type(self, data_frame, building_types):
-        groups_df = data_frame[data_frame['type'] != 'building']
-        groups_df = groups_df.groupby('type')['osmid'].apply(list).reset_index(name='osmid')
-        for ind, t in enumerate(building_types[:-1]):
-            self.osmid_by_building_type[ind] = {'type': t,
-                                                'osmids': groups_df[groups_df['type'] == t]['osmid'].values[0]}
