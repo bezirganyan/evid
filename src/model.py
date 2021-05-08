@@ -146,7 +146,7 @@ class EpiModel(Model):
                 work_places = [random.choice(self.osmid_by_building_type[9]['osmids']),
                                random.choice(self.osmid_by_building_type[8]['osmids'])]
                 work_place = (8, (random.choices(work_places,
-                                                 weights=(0.9, 0.1))[0])) if work_none is not None else None
+                                                 weights=(0.6, 0.4))[0])) if work_none is not None else None
             agent = EpiAgent(int(f'{building_osmid}{ind}'), self, age, gender, work_place, study_place)
             self.grid.place_agent(agent, building_osmid)
             self.scheduler.add(agent)

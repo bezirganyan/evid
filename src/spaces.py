@@ -46,3 +46,4 @@ def iter_cell_list_contents(self, cell_list: List[int]) -> List[GridContent]:
         if not self.is_cell_empty(node_id)
     ]
     return [item for sublist in list_of_lists for ap in sublist for item in ap]
+

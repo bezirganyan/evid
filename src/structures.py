@@ -90,8 +90,8 @@ class EpiAgent(Agent):
         self.countdown_after_infected: int = None
         self.work_place = work_place
         self.study_place = study_place
-        self.works = 0;
-        self.studies = 0;
+        self.works = 0
+        self.studies = 0
 
     def step(self):
         if self.hours_infected > self.model.healing_period:
@@ -99,13 +99,14 @@ class EpiAgent(Agent):
 
         p = random.random()
         if self.condition == Condition.Infected:
+            mortality_rate = self.model.mortality_rate[
+                self.severity.name] if not self.in_hospital else self.model.mortality_rate[
+                                                                     self.severity.name] * self.model.hospital_efficiency  # TODO check difference of mortality rate in hospital
             self.hours_infected += self.model.step_size
-            if p < self.model.mortality_rate[
-                self.severity.name]:  # TODO should be changed ( and self.countdown_after_infected <= 0)
+            if p < mortality_rate and self.countdown_after_infected <= 0:
                 self.model.dead_count += 1
                 self.model.grid._remove_agent(self, self.pos)
                 self.condition = Condition.Dead
-            return
         self.move()
         if self.countdown_after_infected is not None and self.countdown_after_infected > 0:
             self.countdown_after_infected -= self.model.step_size
@@ -120,7 +121,7 @@ class EpiAgent(Agent):
             building_type = self.model.graph.nodes[self.pos]['building'].building_type
             if self.model.graph.nodes[self.pos]['building'].public:
                 same_place_agents = self.model.graph.nodes[self.pos]['building'].apartments[0]
-                n_contact_people = contact_prob[building_type] * len(same_place_agents)
+                n_contact_people = contact_prob[building_type] * len(same_place_agents) #TODO do we need number of contact people
                 n_contact_people = math.ceil(math.ceil(n_contact_people))
                 contacted_agents = choice(same_place_agents, size=n_contact_people)
             else:
@@ -143,12 +144,12 @@ class EpiAgent(Agent):
             return
         if self.condition == Condition.Infected:
             if self.severity == Severity.mild:
-                if self.countdown_after_infected == 0:
+                if self.countdown_after_infected <= 0:
                     to_node = self.address[0]
                 else:
                     to_node = self.get_target_node_healthy()
             elif self.severity == Severity.severe:
-                if self.countdown_after_infected == 0:
+                if self.countdown_after_infected <= 0:
                     to_node = random.choice(
                         self.model.get_b_ids_by_types(['hospital']))  # if there is no place in hospital agent goes home
                 else:
