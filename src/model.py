@@ -1,4 +1,6 @@
+import pickle
 import random
+from pathlib import Path
 from typing import List, Tuple
 
 import networkx as nx
@@ -29,10 +31,12 @@ class EpiModel(Model):
                  initial_infected=10,
                  step_size=1,
                  hospital_efficiency=0.3,
+                 save_every=24,
                  severity_dist: object = {"asymptomatic": 0.24, "mild": 0.56, "severe": 0.2},
                  infection_countdown_dist: object = {"loc": 48, "scale": 7},
                  **kwargs):
         super().__init__()
+        self.save_every = save_every
         self.date = start_date
         self.districts = dict()
         self.dead_count = 0
@@ -47,6 +51,7 @@ class EpiModel(Model):
                                           "severe": 0.0004})  # TODO numbers should be changed
         self.healing_period = kwargs.get('healing_period', 14 * 24)
         self.hospital_beds = kwargs.get('hospital_beds', 5000)
+        self.checkpoint_directory = kwargs.get('checkpoint_directory', 'checkpoints')
         # self.osmid_by_building_type = {'cafe':{'index':0,'osmid':[]} , 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [],
         #                                8: []}
         self.building_types = building_types
@@ -57,6 +62,7 @@ class EpiModel(Model):
         self.step_size = step_size
         self.distribute_osmid_by_building_type(data_frame, building_types)
         self.hospital_efficiency = hospital_efficiency
+        self.step_counts = 0
 
         for d in self.districts.values():
             self.distribute_people(d, age_dist)
@@ -75,6 +81,9 @@ class EpiModel(Model):
         self.datacollector.collect(self)
         self.scheduler.step()
         self.date = self.date + timedelta(hours=self.step_size)
+        self.step_counts += 1
+        if self.step_counts % self.save_every == 0:
+            self.save_model(self.checkpoint_directory)
 
     def distribute_osmid_by_building_type(self, data_frame, building_types):
         groups_df = data_frame[data_frame['type'] != 'building']
@@ -158,3 +167,8 @@ class EpiModel(Model):
                 if d["building"].building_type == t:
                     ids.append(p)
         return ids
+
+    def save_model(self, checkpoint_folder='checkpoints'):
+        Path(checkpoint_folder).mkdir(parents=True, exist_ok=True)
+        with open(f'{checkpoint_folder}/checkpoint_{self.date}.pickle', 'wb') as f:
+            pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
