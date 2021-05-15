@@ -24,8 +24,10 @@ class EpiModel(Model):
                  start_date: datetime,
                  moving_distribution_tensor,
                  building_types: List,
+                 contact_prob,
                  building_params: Tuple[Tuple[int], Tuple[float]] = None,
                  age_dist: Tuple[float] = None,
+                 inf_prob_args=None,
                  data_frame: pd.DataFrame = None,
                  graph: nx.Graph = None,
                  initial_infected=10,
@@ -36,6 +38,7 @@ class EpiModel(Model):
                  infection_countdown_dist: object = {"loc": 48, "scale": 7},
                  **kwargs):
         super().__init__()
+        self.contact_prob = contact_prob
         self.save_every = save_every
         self.date = start_date
         self.districts = dict()
@@ -46,6 +49,7 @@ class EpiModel(Model):
         self.num_agents = population_number
         self.grid = EpiNetworkGrid(self.graph)
         self.scheduler = SimultaneousActivation(self)
+        self.inf_prob_args = inf_prob_args
         self.mortality_rate = kwargs.get('mortality_rate',
                                          {"asymptomatic": 0.0000001, "mild": 0.0002,
                                           "severe": 0.0004})  # TODO numbers should be changed

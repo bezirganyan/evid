@@ -1,0 +1,164 @@
+{
+  "district_props": {
+  "districts": [
+    {
+      "uid": 12,
+      "name": "Ajapnyak",
+      "n_buildings": 100,
+      "population": 109600
+    },
+    {
+      "uid": 1,
+      "name": "Davitashen",
+      "n_buildings": 100,
+      "population": 42207
+    },
+    {
+      "uid": 2,
+      "name": "Arabkir",
+      "n_buildings": 100,
+      "population": 117704
+    },
+    {
+      "uid": 3,
+      "name": "Qanaqer zeuytun",
+      "n_buildings": 100,
+      "population": 74400
+    },
+    {
+      "uid": 4,
+      "name": "Nor-norq",
+      "n_buildings": 100,
+      "population": 129400
+    },
+    {
+      "uid": 5,
+      "name": "Norq marash",
+      "n_buildings": 100,
+      "population": 11300
+    },
+    {
+      "uid": 6,
+      "name": "Kentron",
+      "n_buildings": 100,
+      "population": 126600
+    },
+    {
+      "uid": 7,
+      "name": "Erebuni",
+      "n_buildings": 100,
+      "population": 126300
+    },
+    {
+      "uid": 8,
+      "name": "Shengavit",
+      "n_buildings": 100,
+      "population": 137400
+    },
+    {
+      "uid": 9,
+      "name": "Malatia",
+      "n_buildings": 100,
+      "population": 142600
+    },
+    {
+      "uid": 10,
+      "name": "Avan",
+      "n_buildings": 100,
+      "population": 53100
+    },
+    {
+      "uid": 11,
+      "name": "Nubarashen",
+      "n_buildings": 100,
+      "population": 9700
+    }
+  ]
+},
+  "contact_prob": {
+    "cafe": 0.05,
+    "church": 0.03,
+    "hospital": 0.4,
+    "kindergarten": 0.5,
+    "school": 0.6,
+    "university": 0.3,
+    "building": 0.9,
+    "sport": 0.3,
+    "work": 0.4,
+    "shop": 0.2
+},
+  "compute_inf_prob_arguments": {
+    "school": {
+      "vol": 2,
+      "rlwr": 2,
+      "area": 2500,
+      "height": 3,
+      "mask_out": 0.5,
+      "mask_in": 0.2
+    },
+    "university": {
+      "vol": 2,
+      "rlwr": 2,
+      "area": 7000,
+      "height": 3,
+      "mask_out": 0.5,
+      "mask_in": 0.2
+    },
+    "kindergarten": {
+      "vol": 2,
+      "rlwr": 2,
+      "area": 1000,
+      "height": 3,
+      "mask_out": 0.5,
+      "mask_in": 0.2
+    },
+    "work": {
+      "vol": 2,
+      "area": 1200,
+      "height": 3,
+      "rlwr": 2,
+      "mask_out": 0.5,
+      "mask_in": 0.2
+    },
+    "cafe": {
+      "vol": 2,
+      "area": 450,
+      "height": 4,
+      "rlwr": 3,
+      "mask_out": 0,
+      "mask_in": 0
+    },
+    "church": {
+      "vol": 1,
+      "area": 300,
+      "height": 15,
+      "rlwr": 2,
+      "mask_out": 0.5,
+      "mask_in": 0.2
+    },
+    "sport": {
+      "vol": 2,
+      "area": 1000,
+      "height": 4,
+      "rlwr": 2,
+      "mask_out": 0,
+      "mask_in": 0
+    },
+    "shop": {
+      "vol": 3,
+      "area": 550,
+      "height": 5,
+      "rlwr": 3,
+      "mask_out": 0.5,
+      "mask_in": 0.2
+    },
+    "building": {
+      "vol": 2,
+      "area": 70,
+      "height": 3,
+      "rlwr": 3,
+      "mask_out": 0,
+      "mask_in": 0
+    }
+  }
+}

@@ -6,7 +6,6 @@ from mesa import Agent
 import numpy as np
 from numpy.random import choice
 
-from configs.contact_prob import contact_prob
 from src.utils import Condition, compute_inf_prob, Severity
 
 
@@ -121,17 +120,14 @@ class EpiAgent(Agent):
             building_type = self.model.graph.nodes[self.pos]['building'].building_type
             if self.model.graph.nodes[self.pos]['building'].public:
                 same_place_agents = self.model.graph.nodes[self.pos]['building'].apartments[0]
-                n_contact_people = contact_prob[building_type] * len(same_place_agents) #TODO do we need number of contact people
+                n_contact_people = self.model.contact_prob[building_type] * len(same_place_agents) #TODO do we need number of contact people
                 n_contact_people = math.ceil(math.ceil(n_contact_people))
                 contacted_agents = choice(same_place_agents, size=n_contact_people)
             else:
                 same_place_agents = self.model.graph.nodes[self.pos]['building'].apartments[
                     self.address[1]]
                 contacted_agents = same_place_agents
-            with open('configs/compute-inf-prob.json', 'r') as compute_inf_prob_json:
-                arguments = json.load(compute_inf_prob_json)["compute_inf_prob_arguments"][
-                    building_type]
-                inf_prob = compute_inf_prob(**arguments)
+            inf_prob = compute_inf_prob(**self.model.inf_prob_args[building_type])
             infected_candidates = random.choices([0, 1], weights=(1 - inf_prob, inf_prob), k=len(contacted_agents))
             for agent, inf in zip(contacted_agents, infected_candidates):
                 if inf and agent.condition == Condition.Not_infected:
