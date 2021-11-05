@@ -1,0 +1,217 @@
+---
+files:
+  mobility_distribution_path: configs/mobility_distribution.npy
+  checkpoint_directory: experiments/experiment_1
+  city_dataset_path: ./final_filtered_yerevan_plan.csv
+
+model:
+  start_datetime: 01-11-2021 00:01
+  save_every: 2
+  step_size: 1
+  hospital_efficiency: 0.3
+  initial_infected: 50
+  population_number: 1080311
+  hospital_beds: 5000
+
+
+virus:
+  # lifetime of the virus in the air [h]
+  lifetime: 1.7
+  # dose of virus at 50% infection probability
+  d50: 316
+  # conc: "The reported viral RNA concentration of approximately 5 × 10^8 / mL represents the category of
+  #    highly infectious patients and represents approximately 20% of individuals tested positive for SARS-CoV-2"
+  #    [10^7 - 10^11]
+  conc: 5.0e+8
+  # mwd: Aerosol effective Mean diameter [µm] [1-50]
+  mwd: 5
+  # conc_b: Aerosol number concentration while breathing [#/cm³]  [0.001 - 1]
+  conc_b: 0.06
+  # conc_s: Aerosol number concentration while speaking [#/cm³]  [0.01 - 9]
+  conc_s: 0.6
+  # depo: Aerosol deposition efficiency lung
+  depo: 0.5
+
+  # healing period [days]
+  healing_period: 10
+  infection_severity_dist:
+    asymptomatic: 0.24
+    mild: 0.56
+    severe: 0.2
+  mortality_rate:
+    asymptomatic: 0.000001
+    mild: 0.001
+    severe: 0.125
+
+facilities:
+  # contact_probability: probability of contacting another person in each facility
+  # vol: Speaking volume in facility [1=quietly, 3=loud, 4..9= singing/screaming] [1 - 9]
+  # area: total area of the facility (apartment in case of residential builfing) (m^2)
+  # height: height of a room in the facility (m)
+  # rlwr: air exchange rate [/h] [0.35=no ventilation, 2=burst ventilation once per h, 6=public places/supermarket]
+  # mask_out: mask efficiency (exhale) [0-1; surgical mask ~0.7, everyday mask (2 fabric layers) ~0.5] [0 - 1]
+  # mask_in: mask efficiency (inhale) [0-1; surgical mask ~0.5 b   , community mask (2 fabric layers) ~0.2] [0 - 1]
+  #          0 means no mask
+  # speak_frac: fraction of speaking in the facility [0-100%]
+  cafe:
+    contact_probability: 0.05
+    vol: 2
+    area: 450
+    height: 4
+    rlwr: 5
+    mask_in: 0
+    mask_out: 0
+    speak_frac: 50
+
+  church:
+    contact_probability: 0.03
+    vol: 1
+    area: 300
+    height: 15
+    rlwr: 2
+    mask_in: 0
+    mask_out: 0
+    speak_frac: 10
+
+  sport:
+    contact_probability: 0.3
+    vol: 2
+    area: 1000
+    height: 4
+    rlwr: 2
+    mask_in: 0
+    mask_out: 0
+    speak_frac: 30
+
+  shop:
+    contact_probability: 0.2
+    vol: 2
+    area: 550
+    height: 5
+    rlwr: 2
+    mask_in: 0
+    mask_out: 0
+    speak_frac: 30
+
+  hospital:
+    contact_probability: 0.005
+    vol: 2
+    area: 2000
+    height: 3
+    rlwr: 2
+    mask_in: 0
+    mask_out: 0
+    speak_frac: 10
+
+  kindergarten:
+    contact_probability: 0.02
+    vol: 2
+    area: 1000
+    height: 3
+    rlwr: 2
+    mask_in: 0
+    mask_out: 0
+    speak_frac: 60
+
+  university:
+    contact_probability: 0.01
+    vol: 2
+    area: 7000
+    height: 3
+    rlwr: 2
+    mask_in: 0
+    mask_out: 0
+    speak_frac: 40
+
+  school:
+    contact_probability: 0.1
+    vol: 2
+    area: 2000
+    height: 3
+    rlwr: 2
+    mask_in: 0
+    mask_out: 0
+    speak_frac: 40
+  work:
+    contact_probability: 0.2
+    vol: 2
+    area: 1000
+    height: 3
+    rlwr: 2
+    mask_in: 0
+    mask_out: 0
+    speak_frac: 40
+
+  residential:
+    floor_probs:
+      1: 0.00455
+      2: 0.03185
+      3: 0.04736
+      4: 0.1878
+      5: 0.25584
+      6: 0.02813
+      7: 0.00807
+      8: 0.09121
+      9: 0.23909
+      14: 0.1061
+    contact_probability: 0.8
+    vol: 2
+    area: 80
+    height: 2.5
+    rlwr: 2
+    mask_in: 0
+    mask_out: 0
+    speak_frac: 40
+
+people:
+  age_dist:
+    - 0.0688
+    - 0.196
+    - 0.1869
+    - 0.4431
+    - 0.1052
+  # atv: respiratory rate for each age group [l/min] [7.5-15; adult=10]
+  atv:
+    - 7.5
+    - 8.5
+    - 10
+    - 10
+    - 9
+
+districts:
+  1:
+    name: "Davitashen"
+    population: 42207
+  2:
+    name: "Arabkir"
+    population: 117704
+  3:
+    name: "Qanaqer zeuytun"
+    population: 74400
+  4:
+    name: "Nor-norq"
+    population: 129400
+  5:
+    name: "Norq marash"
+    population: 11300
+  6:
+    name: "Kentron"
+    population: 126600
+  7:
+    name: "Erebuni"
+    population: 126300
+  8:
+    name: "Shengavit"
+    population: 137400
+  9:
+    name: "Malatia"
+    population: 142600
+  10:
+    name: "Avan"
+    population: 53100
+  11:
+    name: "Nubarashen"
+    population: 9700
+  12:
+    name: "Ajapnyak"
+    population: 109600

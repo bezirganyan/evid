@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import List, Tuple
 
 import networkx as nx
+import numpy as np
 import pandas as pd
 from mesa import Model
 from mesa.datacollection import DataCollector
@@ -21,50 +22,47 @@ from src.utils import Condition, compute_infected, compute_not_infected, compute
 class EpiModel(Model):
     def __init__(self, population_number,
                  districts,
-                 start_date: datetime,
+                 start_datetime: str,
                  moving_distribution_tensor,
-                 building_types: List,
-                 contact_prob,
-                 building_params: Tuple[Tuple[int], Tuple[float]] = None,
+                 facility_conf: dict,
+                 virus_conf: dict,
+                 people_conf: dict,
                  age_dist: Tuple[float] = None,
-                 inf_prob_args=None,
-                 data_frame: pd.DataFrame = None,
+                 city_data: pd.DataFrame = None,
                  graph: nx.Graph = None,
                  initial_infected=10,
                  step_size=1,
                  hospital_efficiency=0.3,
                  save_every=24,
-                 severity_dist: object = {"asymptomatic": 0.24, "mild": 0.56, "severe": 0.2},
-                 infection_countdown_dist: object = {"loc": 48, "scale": 7},
+                 severity_dist: dict = {"asymptomatic": 0.24, "mild": 0.56, "severe": 0.2},
+                 infection_countdown_dist: dict = {"loc": 48, "scale": 7},
                  **kwargs):
         super().__init__()
-        self.contact_prob = contact_prob
+        self.people_conf = people_conf
+        self.virus_conf = virus_conf
         self.save_every = save_every
-        self.date = start_date
+        self.date = datetime.strptime(start_datetime, '%d-%m-%Y %H:%M')
+        self.facility_conf = facility_conf
         self.districts = dict()
         self.dead_count = 0
-        for district in districts:
-            self.districts[district['name']] = District(**district)
-        self.graph = graph if graph else self.create_graph(data_frame, building_params)
+        for d_id in districts:
+            self.districts[d_id] = District(uid=d_id, **districts[d_id])
+        self.graph = graph if graph else self.create_graph(city_data, facility_conf['residential']['floor_probs'])
         self.num_agents = population_number
         self.grid = EpiNetworkGrid(self.graph)
         self.scheduler = SimultaneousActivation(self)
-        self.inf_prob_args = inf_prob_args
         self.mortality_rate = kwargs.get('mortality_rate',
                                          {"asymptomatic": 0.0000001, "mild": 0.0002,
                                           "severe": 0.0004})  # TODO numbers should be changed
-        self.healing_period = kwargs.get('healing_period', 14 * 24)
+        self.healing_period = kwargs.get('healing_period', 14) * 24
         self.hospital_beds = kwargs.get('hospital_beds', 5000)
         self.checkpoint_directory = kwargs.get('checkpoint_directory', 'checkpoints')
-        # self.osmid_by_building_type = {'cafe':{'index':0,'osmid':[]} , 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [],
-        #                                8: []}
-        self.building_types = building_types
         self.osmid_by_building_type = dict()
         self.moving_distribution_tensor = moving_distribution_tensor
         self.severity_dist = severity_dist
         self.infection_countdown_dist = infection_countdown_dist
         self.step_size = step_size
-        self.distribute_osmid_by_building_type(data_frame, building_types)
+        self.distribute_osmid_by_building_type(city_data, list(facility_conf.keys()))
         self.hospital_efficiency = hospital_efficiency
         self.step_counts = 0
 
@@ -92,15 +90,15 @@ class EpiModel(Model):
     def distribute_osmid_by_building_type(self, data_frame, building_types):
         groups_df = data_frame[data_frame['type'] != 'building']
         groups_df = groups_df.groupby('type')['osmid'].apply(list).reset_index(name='osmid')
-        for ind, t in enumerate(building_types[:-1]):
-            self.osmid_by_building_type[ind] = {'type': t,
-                                                'osmids': groups_df[groups_df['type'] == t]['osmid'].values[0]}
-        other_work_places = []
-        for key in self.osmid_by_building_type:
-            if key != 8 and key != 2:
-                other_work_places += self.osmid_by_building_type[key]['osmids']
-        self.osmid_by_building_type[9] = {'type': 9,
-                                          'osmids': other_work_places}
+        for ind, t in enumerate(building_types):
+            if t == 'residential':
+                continue
+            self.osmid_by_building_type[t] = groups_df[groups_df['type'] == t]['osmid'].values[0]
+        self.osmid_by_building_type['other_work_types'] = []
+        for ind, t in enumerate(building_types):
+            if t in ['residential', 'work']:
+                continue
+            self.osmid_by_building_type['other_work_types'].extend(groups_df[groups_df['type'] == t]['osmid'].values[0])
 
     def create_graph(self, data_frame: pd.DataFrame, building_params):
         if data_frame is None:
@@ -108,12 +106,18 @@ class EpiModel(Model):
         graph = nx.Graph()
         for building in data_frame.iterrows():
             building = building[1]
-            b = Building(building[0], wkt.loads(building[1]), building[3], building[2])
-            self.districts[building[3]].buildings.append(building[0])
-            floors_amount = random.choices(building_params[0], weights=building_params[1])[0]
+            b = Building(building[0], wkt.loads(building[1]), building[4], building[2])
+            self.districts[building[4]].buildings.append(building[0])
+            floors_amount = random.choices(list(building_params.keys()), weights=list(building_params.values()))[0]
             b.n_apartments = get_apartments_number(floors_amount)
             graph.add_node(building[0], building=b)
         return graph
+
+    def get_closest_osmid(self, osmid, btype):
+        distances = [self.graph.nodes[osmid]["building"].coordinates.distance(self.graph.nodes[id]["building"].coordinates) for id in self.osmid_by_building_type[btype]]
+        osmid = self.osmid_by_building_type[btype][np.argmin(distances)]
+        assert osmid is not None
+        return osmid
 
     def distribute_people(self, district: District,
                           age_dist: Tuple[float],
@@ -131,33 +135,33 @@ class EpiModel(Model):
             if age == 0:
                 kindergarten_or_none_types = ['kindergarten', None]
                 kindergarten_or_none = random.choices(kindergarten_or_none_types, [0.3, 0.7])[0]
-                study_place = (7, random.choice(
-                    self.osmid_by_building_type[3]['osmids'])) if kindergarten_or_none is not None else None
+                study_place = (7, self.get_closest_osmid(building_osmid, 'kindergarten') if
+                        kindergarten_or_none is not None else None)
             elif age == 1:
                 school_or_none_types = ['school', None]
                 school_or_none = random.choices(school_or_none_types, [0.3, 0.7])[0]
                 study_place = (
-                    7, random.choice(self.osmid_by_building_type[4]['osmids'])) if school_or_none is not None else None
+                    7, self.get_closest_osmid(building_osmid, 'kindergarten')) if school_or_none is not None else None
             elif age == 2:
                 work_or_study_types = ['work', 'study', 'both', None]
                 work_or_study = random.choices(work_or_study_types,
-                                               (0.3, 0.1, 0.55, 0.2))[0]  # TODO distribution should be changed
+                                               (0.3, 0.2, 0.55, 0.1))[0]  # TODO distribution should be changed
                 if work_or_study == 'work':
-                    work_place = (8, random.choices((random.choice(self.osmid_by_building_type[9]['osmids']),
-                                                     random.choice(self.osmid_by_building_type[8]['osmids'])),
+                    work_place = (8, random.choices((random.choice(self.osmid_by_building_type['work']),
+                                                     random.choice(self.osmid_by_building_type['other_work_types'])),
                                                     weights=(0.9, 0.1))[0])
                 elif work_or_study == 'study':
-                    study_place = (7, random.choice(self.osmid_by_building_type[7]['osmids']))
+                    study_place = (7, self.get_closest_osmid(building_osmid, 'university'))
                 elif work_or_study == 'both':
-                    study_place = (5, random.choice(self.osmid_by_building_type[7]['osmids']))
-                    work_place = (4, random.choices((random.choice(self.osmid_by_building_type[9]['osmids']),
-                                                     random.choice(self.osmid_by_building_type[8]['osmids'])),
+                    study_place = (5, self.get_closest_osmid(building_osmid, 'university'))
+                    work_place = (4, random.choices((random.choice(self.osmid_by_building_type['work']),
+                                                     random.choice(self.osmid_by_building_type['other_work_types'])),
                                                     weights=(0.9, 0.1))[0])
             elif age == 3:
                 work_none_types = ['work', None]
                 work_none = random.choices(work_none_types, [0.82, 0.18])[0]
-                work_places = [random.choice(self.osmid_by_building_type[9]['osmids']),
-                               random.choice(self.osmid_by_building_type[8]['osmids'])]
+                work_places = [random.choice(self.osmid_by_building_type['work']),
+                               random.choice(self.osmid_by_building_type['other_work_types'])]
                 work_place = (8, (random.choices(work_places,
                                                  weights=(0.6, 0.4))[0])) if work_none is not None else None
             agent = EpiAgent(int(f'{building_osmid}{ind}'), self, age, gender, work_place, study_place)

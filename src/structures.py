@@ -10,10 +10,9 @@ from src.utils import Condition, compute_inf_prob, Severity
 
 
 class District:
-    def __init__(self, uid: int, name: str, n_buildings: int, population: int):
+    def __init__(self, uid: int, name: str, population: int):
         self.id = uid
         self.name = name
-        self.building_amount = n_buildings
         self.buildings = []
         self.population = population
 
@@ -26,19 +25,19 @@ class Building:
         self.district = district
         self.apartments = dict()
         self.building_type = building_type
-        self.public = False if building_type == 'building' else True
+        self.public = False if building_type == 'residential' else True
         if self.public:
             self.apartments[0] = []
             self.n_apartments = 1
 
     def place_agent(self, agent):
-        if self.building_type == 'hospital':
-            if agent.model.hospital_beds <= 0:
-                agent.model.grid.place_agent(agent, agent.address[0])
-                return
-            else:
-                agent.model.hospital_beds -= 1
-                agent.in_hosptal = True
+        if self.building_type == 'hospital' and agent.severity == Severity.severe:
+                if agent.model.hospital_beds <= 0:
+                    agent.model.grid.place_agent(agent, agent.address[0])
+                    return
+                else:
+                    agent.model.hospital_beds -= 1
+                    agent.in_hosptal = True
         if not self.public:
             if not agent.address:
                 apartment = random.randint(1, self.n_apartments)
@@ -53,7 +52,7 @@ class Building:
         agent.pos = self.index
 
     def remove_agent(self, agent):
-        if self.building_type == 'hospital':
+        if self.building_type == 'hospital' and agent.condition == Condition.Healed:
             agent.model.hospital_beds += 1
             agent.in_hospital = False
         if not self.public:
@@ -76,7 +75,7 @@ class Building:
 
 
 class EpiAgent(Agent):
-    def __init__(self, unique_id: int, model, age: int, gender: str, work_place: tuple, study_place: tuple):
+    def __init__(self, unique_id: int, model, age: int, gender: int, work_place: tuple, study_place: tuple):
         super().__init__(unique_id, model)
         self.condition = Condition.Not_infected
         self.prev_pos = None
@@ -120,14 +119,20 @@ class EpiAgent(Agent):
             building_type = self.model.graph.nodes[self.pos]['building'].building_type
             if self.model.graph.nodes[self.pos]['building'].public:
                 same_place_agents = self.model.graph.nodes[self.pos]['building'].apartments[0]
-                n_contact_people = self.model.contact_prob[building_type] * len(same_place_agents) #TODO do we need number of contact people
+                n_contact_people = self.model.facility_conf[building_type]['contact_probability'] * len(same_place_agents) #TODO do we need number of contact people
                 n_contact_people = math.ceil(math.ceil(n_contact_people))
                 contacted_agents = choice(same_place_agents, size=n_contact_people)
             else:
                 same_place_agents = self.model.graph.nodes[self.pos]['building'].apartments[
                     self.address[1]]
                 contacted_agents = same_place_agents
-            inf_prob = compute_inf_prob(**self.model.inf_prob_args[building_type])
+            fc = self.model.facility_conf[building_type]
+            vc = self.model.virus_conf
+            inf_prob = compute_inf_prob(rlwr=fc['rlwr'], area=fc['area'], height=fc['height'],
+                                        speak_frac=fc['speak_frac'], mask_in=fc['mask_in'], mask_out=fc['mask_out'],
+                                        vol=fc['vol'], lifetime=vc['lifetime'], d50=vc['d50'], conc=vc['conc'],
+                                        mwd=vc['mwd'], conc_b=vc['conc_b'], conc_s=vc['conc_s'], depo=vc['depo'],
+                                        atv=self.model.people_conf['atv'][self.age])
             infected_candidates = random.choices([0, 1], weights=(1 - inf_prob, inf_prob), k=len(contacted_agents))
             for agent, inf in zip(contacted_agents, infected_candidates):
                 if inf and agent.condition == Condition.Not_infected:
@@ -142,18 +147,24 @@ class EpiAgent(Agent):
             if self.severity == Severity.mild:
                 if self.countdown_after_infected <= 0:
                     to_node = self.address[0]
+                    assert to_node is not None
                 else:
                     to_node = self.get_target_node_healthy()
+                    assert to_node is not None
             elif self.severity == Severity.severe:
                 if self.countdown_after_infected <= 0:
                     to_node = random.choice(
                         self.model.get_b_ids_by_types(['hospital']))  # if there is no place in hospital agent goes home
+                    assert to_node is not None
                 else:
                     to_node = self.get_target_node_healthy()
+                    assert to_node is not None
             else:
                 to_node = self.get_target_node_healthy()
+                assert to_node is not None
         else:
             to_node = self.get_target_node_healthy()
+            assert to_node is not None
         self.model.grid.move_agent(self, to_node)
 
     def get_target_node_healthy(self):
@@ -172,20 +183,20 @@ class EpiAgent(Agent):
         week_day = self.model.date.weekday()
         time = int(self.model.date.strftime("%H"))
         building_types_dist = self.model.moving_distribution_tensor[week_day, self.age, time]
-        to_node_type = random.choices(range(len(self.model.building_types)), weights=building_types_dist)[
+        to_node_type = random.choices(list(self.model.facility_conf.keys()), weights=building_types_dist)[
             0]
-        if to_node_type == len(building_types_dist) - 1:
+        if to_node_type == 'residential':
             to_node = self.address[0]
-        elif to_node_type == 3:
+            assert to_node is not None
+        elif to_node_type in ['school', 'kindergarten', 'university']:
             to_node = self.study_place[1] if self.study_place is not None else self.get_target_node_healthy()
-        elif to_node_type == 4:
-            to_node = self.study_place[1] if self.study_place is not None else self.get_target_node_healthy()
-        elif to_node_type == 7:
-            to_node = self.study_place[1] if self.study_place is not None else self.get_target_node_healthy()
-        elif to_node_type == 8:
+            assert to_node is not None
+        elif to_node_type == 'work':
             to_node = self.work_place[1] if self.work_place is not None else self.get_target_node_healthy()
+            assert to_node is not None
         else:
-            to_node = random.choice(self.model.osmid_by_building_type[to_node_type]['osmids'])
+            to_node = random.choice(self.model.osmid_by_building_type[to_node_type])
+            assert to_node is not None
         return to_node
 
     def set_infected(self):
