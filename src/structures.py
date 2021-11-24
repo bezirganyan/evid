@@ -32,12 +32,12 @@ class Building:
 
     def place_agent(self, agent):
         if self.building_type == 'hospital' and agent.severity == Severity.severe:
-                if agent.model.hospital_beds <= 0:
-                    agent.model.grid.place_agent(agent, agent.address[0])
-                    return
-                else:
-                    agent.model.hospital_beds -= 1
-                    agent.in_hosptal = True
+            if agent.model.hospital_beds <= 0:
+                agent.model.grid.place_agent(agent, agent.address[0])
+                return
+            else:
+                agent.model.hospital_beds -= 1
+                agent.in_hosptal = True
         if not self.public:
             if not agent.address:
                 apartment = random.randint(1, self.n_apartments)
@@ -90,6 +90,8 @@ class EpiAgent(Agent):
         self.study_place = study_place
         self.works = 0
         self.studies = 0
+        self.encountered_agents = set()
+        self.daily_contacts = []
 
     def step(self):
         if self.hours_infected > self.model.healing_period:
@@ -115,17 +117,17 @@ class EpiAgent(Agent):
     def infect(self):
         if self.condition == Condition.Dead:
             self.model.scheduler.remove(self)
+            return
+        building = self.model.graph.nodes[self.pos]['building']
+        building_type = building.building_type
+        btm = self.model.building_type_mapping[building_type]
+        ap = self.address[1] if not self.model.graph.nodes[self.pos]['building'].public else 0
+        same_place_agents = self.model.graph.nodes[self.pos]['building'].apartments[ap]
+        n_contact_people = self.model.facility_conf[building_type]['contact_probability'] * len(
+            same_place_agents)  # TODO do we need number of contact people
+        n_contact_people = math.ceil(math.ceil(n_contact_people))
+        contacted_agents = choice(same_place_agents, size=n_contact_people)
         if self.condition == Condition.Infected:
-            building_type = self.model.graph.nodes[self.pos]['building'].building_type
-            if self.model.graph.nodes[self.pos]['building'].public:
-                same_place_agents = self.model.graph.nodes[self.pos]['building'].apartments[0]
-                n_contact_people = self.model.facility_conf[building_type]['contact_probability'] * len(same_place_agents) #TODO do we need number of contact people
-                n_contact_people = math.ceil(math.ceil(n_contact_people))
-                contacted_agents = choice(same_place_agents, size=n_contact_people)
-            else:
-                same_place_agents = self.model.graph.nodes[self.pos]['building'].apartments[
-                    self.address[1]]
-                contacted_agents = same_place_agents
             fc = self.model.facility_conf[building_type]
             vc = self.model.virus_conf
             inf_prob = compute_inf_prob(rlwr=fc['rlwr'], area=fc['area'], height=fc['height'],
@@ -133,10 +135,24 @@ class EpiAgent(Agent):
                                         vol=fc['vol'], lifetime=vc['lifetime'], d50=vc['d50'], conc=vc['conc'],
                                         mwd=vc['mwd'], conc_b=vc['conc_b'], conc_s=vc['conc_s'], depo=vc['depo'],
                                         atv=self.model.people_conf['atv'][self.age])
-            infected_candidates = random.choices([0, 1], weights=(1 - inf_prob, inf_prob), k=len(contacted_agents))
+            infected_candidates = np.random.choice([0, 1], p=(1 - inf_prob, inf_prob), size=len(contacted_agents))
             for agent, inf in zip(contacted_agents, infected_candidates):
+                if self.unique_id == agent.unique_id: continue
+                self.daily_contacts.append(",".join(list(map(str, [self.unique_id, agent.unique_id,
+                                                                   self.model.date.strftime('%d-%H'), self.age,
+                                                                   agent.age, btm, building.district, building.index,
+                                                                   inf]))))
                 if inf and agent.condition == Condition.Not_infected:
                     agent.set_infected()
+        else:
+            for agent in contacted_agents:
+                if self.unique_id == agent.unique_id or (agent.unique_id in self.encountered_agents): continue
+                agent.encountered_agents.add(self.unique_id)
+                self.daily_contacts.append(",".join(list(map(str, [self.unique_id, agent.unique_id,
+                                                                   self.model.date.strftime('%d-%H'), self.age,
+                                                                   agent.age, btm, building.district, building.index,
+                                                                   0]))))
+            self.encountered_agents.clear()
 
     def move(self):
         if self.condition == Condition.Dead:

@@ -1,5 +1,30 @@
 import enum
 import math
+import os
+import threading
+
+from tqdm import tqdm
+
+
+class Logger:
+    def __init__(self, log_path, model, write_every=None):
+        self.log_path = log_path
+        self.model = model
+        self.write_every = write_every
+        directory = os.path.dirname(self.log_path)
+        os.makedirs(directory, mode=0o777, exist_ok=True)
+        with open(self.log_path, 'w+') as f:
+            print('agent_id,contact_id,datetime,agent_age,contact_age,building_type,district,building_osmid,infection',
+                  file=f)
+
+    def write_log(self):
+        with open(self.log_path, 'a') as f:
+            print("Writing Logs...")
+            for agent in tqdm(self.model.scheduler.agents):
+                f.writelines('\n'.join(agent.daily_contacts))
+                if agent.daily_contacts:
+                    f.write('\n')
+                agent.daily_contacts = []
 
 
 def compute_infected(model):

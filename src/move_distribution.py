@@ -11,6 +11,7 @@ def get_agent_movement_distribution(cfg):
     # ageRange = [(0-4),(5-19),(20-29),(30-63),(64-120)]
     # building_type =[cafe, church,hospital, kindergarten, school,shop,sport,university,work,residential]
     building_type = list(cfg['facilities'].keys())
+    print(building_type)
     tensor = np.zeros(shape=(7, 5, 24, len(building_type)))
     for wd in range(7):
         for age in range(5):

@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from src.spaces import EpiNetworkGrid
 from src.structures import EpiAgent, District, Building
 from src.utils import Condition, compute_infected, compute_not_infected, compute_dead, compute_healed, \
-    get_healthcare_potential, get_apartments_number
+    get_healthcare_potential, get_apartments_number, Logger
 
 
 class EpiModel(Model):
@@ -36,6 +36,7 @@ class EpiModel(Model):
                  save_every=24,
                  severity_dist: dict = {"asymptomatic": 0.24, "mild": 0.56, "severe": 0.2},
                  infection_countdown_dist: dict = {"loc": 48, "scale": 7},
+                 log_path='output.csv',
                  **kwargs):
         super().__init__()
         self.people_conf = people_conf
@@ -65,7 +66,9 @@ class EpiModel(Model):
         self.distribute_osmid_by_building_type(city_data, list(facility_conf.keys()))
         self.hospital_efficiency = hospital_efficiency
         self.step_counts = 0
+        self.logger = Logger(log_path, self)
 
+        self.building_type_mapping = {t: i for i, t in enumerate(list(facility_conf.keys()))}
         for d in self.districts.values():
             self.distribute_people(d, age_dist)
 
@@ -164,7 +167,7 @@ class EpiModel(Model):
                                random.choice(self.osmid_by_building_type['other_work_types'])]
                 work_place = (8, (random.choices(work_places,
                                                  weights=(0.6, 0.4))[0])) if work_none is not None else None
-            agent = EpiAgent(int(f'{building_osmid}{ind}'), self, age, gender, work_place, study_place)
+            agent = EpiAgent(int(f'{str(district.id*100 + 10)[:3]}{ind}'), self, age, gender, work_place, study_place)
             self.grid.place_agent(agent, building_osmid)
             self.scheduler.add(agent)
 

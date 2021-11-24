@@ -3,6 +3,8 @@ files:
   mobility_distribution_path: configs/mobility_distribution.npy
   checkpoint_directory: experiments/experiment_1
   city_dataset_path: ./final_filtered_yerevan_plan.csv
+  log_path: experiments/experiment_1/output.csv
+  write_every: 1000000
 
 model:
   start_datetime: 01-11-2021 00:01
@@ -54,7 +56,7 @@ facilities:
   #          0 means no mask
   # speak_frac: fraction of speaking in the facility [0-100%]
   cafe:
-    contact_probability: 0.05
+    contact_probability: 0.1
     vol: 2
     area: 450
     height: 4
@@ -64,7 +66,7 @@ facilities:
     speak_frac: 50
 
   church:
-    contact_probability: 0.03
+    contact_probability: 0.07
     vol: 1
     area: 300
     height: 15
@@ -74,7 +76,7 @@ facilities:
     speak_frac: 10
 
   sport:
-    contact_probability: 0.3
+    contact_probability: 0.1
     vol: 2
     area: 1000
     height: 4
@@ -154,7 +156,7 @@ facilities:
       8: 0.09121
       9: 0.23909
       14: 0.1061
-    contact_probability: 0.8
+    contact_probability: 0.6
     vol: 2
     area: 80
     height: 2.5
