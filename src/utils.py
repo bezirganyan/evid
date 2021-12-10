@@ -14,7 +14,7 @@ class Logger:
         directory = os.path.dirname(self.log_path)
         os.makedirs(directory, mode=0o777, exist_ok=True)
         with open(self.log_path, 'w+') as f:
-            print('agent_id,contact_id,datetime,agent_age,contact_age,building_type,district,building_osmid,infection',
+            print('agent_id,contact_id,day,dow,hour,agent_age,contact_age,building_type,district,building_osmid,infection',
                   file=f)
 
     def write_log(self):

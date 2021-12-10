@@ -11,7 +11,6 @@ from mesa.datacollection import DataCollector
 from mesa.time import SimultaneousActivation
 from shapely import wkt
 from tqdm import tqdm
-from datetime import datetime, timedelta
 
 from src.spaces import EpiNetworkGrid
 from src.structures import EpiAgent, District, Building
@@ -22,7 +21,6 @@ from src.utils import Condition, compute_infected, compute_not_infected, compute
 class EpiModel(Model):
     def __init__(self, population_number,
                  districts,
-                 start_datetime: str,
                  moving_distribution_tensor,
                  facility_conf: dict,
                  virus_conf: dict,
@@ -30,10 +28,10 @@ class EpiModel(Model):
                  age_dist: Tuple[float] = None,
                  city_data: pd.DataFrame = None,
                  graph: nx.Graph = None,
-                 initial_infected=10,
-                 step_size=1,
-                 hospital_efficiency=0.3,
-                 save_every=24,
+                 initial_infected: int = 10,
+                 step_size: int = 1,
+                 hospital_efficiency: float = 0.3,
+                 save_every: int = 24,
                  severity_dist: dict = {"asymptomatic": 0.24, "mild": 0.56, "severe": 0.2},
                  infection_countdown_dist: dict = {"loc": 48, "scale": 7},
                  log_path='output.csv',
@@ -42,7 +40,9 @@ class EpiModel(Model):
         self.people_conf = people_conf
         self.virus_conf = virus_conf
         self.save_every = save_every
-        self.date = datetime.strptime(start_datetime, '%d-%m-%Y %H:%M')
+        self.day = 0
+        self.hour = 0
+        self.weekday = 0
         self.facility_conf = facility_conf
         self.districts = dict()
         self.dead_count = 0
@@ -55,7 +55,7 @@ class EpiModel(Model):
         self.mortality_rate = kwargs.get('mortality_rate',
                                          {"asymptomatic": 0.0000001, "mild": 0.0002,
                                           "severe": 0.0004})  # TODO numbers should be changed
-        self.healing_period = kwargs.get('healing_period', 14) * 24
+        self.healing_period = kwargs.get('healing_period', 8) * 24
         self.hospital_beds = kwargs.get('hospital_beds', 5000)
         self.checkpoint_directory = kwargs.get('checkpoint_directory', 'checkpoints')
         self.osmid_by_building_type = dict()
@@ -82,13 +82,21 @@ class EpiModel(Model):
             "Healed": compute_healed,
             "Healthcare_potential": get_healthcare_potential})
 
+    def do_time_step(self, step: int = 1) -> None:
+        self.hour += step
+        if self.hour >= 24:
+            self.hour %= 24
+            self.day += 1
+            self.weekday = (self.weekday + 1) % 7
+
     def step(self):
         self.datacollector.collect(self)
         self.scheduler.step()
-        self.date = self.date + timedelta(hours=self.step_size)
+        self.do_time_step(self.step_size)
         self.step_counts += 1
         if self.step_counts % self.save_every == 0:
             self.save_model(self.checkpoint_directory)
+        self.logger.write_log()
 
     def distribute_osmid_by_building_type(self, data_frame, building_types):
         groups_df = data_frame[data_frame['type'] != 'building']
@@ -181,5 +189,5 @@ class EpiModel(Model):
 
     def save_model(self, checkpoint_folder='checkpoints'):
         Path(checkpoint_folder).mkdir(parents=True, exist_ok=True)
-        with open(f'{checkpoint_folder}/checkpoint_{self.date}.pickle', 'wb') as f:
+        with open(f'{checkpoint_folder}/checkpoint_{self.day}_{self.hour}.pickle', 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)

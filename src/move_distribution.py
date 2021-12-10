@@ -1,11 +1,13 @@
 import numpy as np
 
+
 def get_probability_for_bt(building_type, possible_facilities, probs, n_types=10):
     if building_type in possible_facilities:
         prob_value = probs[possible_facilities.index(building_type)]
     else:
         prob_value = (1 - sum(probs)) / (n_types - len(possible_facilities))
     return prob_value
+
 
 def get_agent_movement_distribution(cfg):
     # ageRange = [(0-4),(5-19),(20-29),(30-63),(64-120)]
@@ -20,11 +22,13 @@ def get_agent_movement_distribution(cfg):
                     if 0 <= wd <= 4:
                         if age == 0:
                             if 10 <= time < 17:
-                                pos_bts = ['cafe', 'kindergarten', 'residential', 'church', 'university', 'work', 'sport']
+                                pos_bts = ['cafe', 'kindergarten', 'residential', 'church', 'university', 'work',
+                                           'sport']
                                 probs = [0.01, 0.4, 0.5, 0.01, 0, 0, 0]
                                 prob_value = get_probability_for_bt(bt, pos_bts, probs)
                             elif 17 <= time < 21:
-                                pos_bts = ['cafe', 'kindergarten', 'residential', 'church', 'university', 'work', 'sport']
+                                pos_bts = ['cafe', 'kindergarten', 'residential', 'church', 'university', 'work',
+                                           'sport']
                                 probs = [0.02, 0, 0.9, 0.01, 0, 0, 0]
                                 prob_value = get_probability_for_bt(bt, pos_bts, probs)
 

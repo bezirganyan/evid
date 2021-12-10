@@ -1,12 +1,20 @@
 import math
 import random
 import json
+from operator import itemgetter
 
 from mesa import Agent
 import numpy as np
 from numpy.random import choice
 
 from src.utils import Condition, compute_inf_prob, Severity
+
+
+def rand_bin_array(K, N):
+    arr = np.zeros(N).astype(int)
+    arr[:K] = 1
+    np.random.shuffle(arr)
+    return arr
 
 
 class District:
@@ -31,13 +39,16 @@ class Building:
             self.n_apartments = 1
 
     def place_agent(self, agent):
-        if self.building_type == 'hospital' and agent.severity == Severity.severe:
+        if self.building_type == 'hospital' and \
+                agent.condition == Condition.Infected and \
+                agent.severity == Severity.severe and \
+                agent.countdown_after_infected <= 0:
             if agent.model.hospital_beds <= 0:
                 agent.model.grid.place_agent(agent, agent.address[0])
                 return
             else:
                 agent.model.hospital_beds -= 1
-                agent.in_hosptal = True
+                agent.in_hospital = True
         if not self.public:
             if not agent.address:
                 apartment = random.randint(1, self.n_apartments)
@@ -52,7 +63,7 @@ class Building:
         agent.pos = self.index
 
     def remove_agent(self, agent):
-        if self.building_type == 'hospital' and agent.condition == Condition.Healed:
+        if self.building_type == 'hospital' and agent.condition == Condition.Healed and agent.in_hospital:
             agent.model.hospital_beds += 1
             agent.in_hospital = False
         if not self.public:
@@ -126,7 +137,12 @@ class EpiAgent(Agent):
         n_contact_people = self.model.facility_conf[building_type]['contact_probability'] * len(
             same_place_agents)  # TODO do we need number of contact people
         n_contact_people = math.ceil(math.ceil(n_contact_people))
-        contacted_agents = choice(same_place_agents, size=n_contact_people)
+        choices = rand_bin_array(n_contact_people, len(same_place_agents))
+        # contacted_agents = [same_place_agents[c] for c in np.nonzero(choices)]
+        contacted_agents = itemgetter(*np.nonzero(choices)[0])(same_place_agents)
+        if contacted_agents is None:
+            return
+        contacted_agents = contacted_agents if isinstance(contacted_agents, tuple) else (contacted_agents,)
         if self.condition == Condition.Infected:
             fc = self.model.facility_conf[building_type]
             vc = self.model.virus_conf
@@ -135,11 +151,13 @@ class EpiAgent(Agent):
                                         vol=fc['vol'], lifetime=vc['lifetime'], d50=vc['d50'], conc=vc['conc'],
                                         mwd=vc['mwd'], conc_b=vc['conc_b'], conc_s=vc['conc_s'], depo=vc['depo'],
                                         atv=self.model.people_conf['atv'][self.age])
-            infected_candidates = np.random.choice([0, 1], p=(1 - inf_prob, inf_prob), size=len(contacted_agents))
+            # infected_candidates = np.random.choice([0, 1], p=(1 - inf_prob, inf_prob), size=len(contacted_agents))
+            infected_candidates = rand_bin_array(int(inf_prob*len(contacted_agents)), len(contacted_agents))
             for agent, inf in zip(contacted_agents, infected_candidates):
                 if self.unique_id == agent.unique_id: continue
                 self.daily_contacts.append(",".join(list(map(str, [self.unique_id, agent.unique_id,
-                                                                   self.model.date.strftime('%d-%H'), self.age,
+                                                                   self.model.day,self.model.weekday,
+                                                                   self.model.hour, self.age,
                                                                    agent.age, btm, building.district, building.index,
                                                                    inf]))))
                 if inf and agent.condition == Condition.Not_infected:
@@ -149,7 +167,8 @@ class EpiAgent(Agent):
                 if self.unique_id == agent.unique_id or (agent.unique_id in self.encountered_agents): continue
                 agent.encountered_agents.add(self.unique_id)
                 self.daily_contacts.append(",".join(list(map(str, [self.unique_id, agent.unique_id,
-                                                                   self.model.date.strftime('%d-%H'), self.age,
+                                                                   self.model.day,self.model.weekday,
+                                                                   self.model.hour, self.age,
                                                                    agent.age, btm, building.district, building.index,
                                                                    0]))))
             self.encountered_agents.clear()
@@ -196,16 +215,13 @@ class EpiAgent(Agent):
                 return self.pos
             else:
                 self.works = 0
-        week_day = self.model.date.weekday()
-        time = int(self.model.date.strftime("%H"))
-        building_types_dist = self.model.moving_distribution_tensor[week_day, self.age, time]
-        to_node_type = random.choices(list(self.model.facility_conf.keys()), weights=building_types_dist)[
-            0]
+        building_types_dist = self.model.moving_distribution_tensor[self.model.weekday, self.age, self.model.hour]
+        to_node_type = random.choices(list(self.model.facility_conf.keys()), weights=building_types_dist)[0]
         if to_node_type == 'residential':
             to_node = self.address[0]
             assert to_node is not None
         elif to_node_type in ['school', 'kindergarten', 'university']:
-            to_node = self.study_place[1] if self.study_place is not None else self.get_target_node_healthy()
+            to_node = self.study_place[1] if self.study_place is not None and self.study_place[1] else self.get_target_node_healthy()
             assert to_node is not None
         elif to_node_type == 'work':
             to_node = self.work_place[1] if self.work_place is not None else self.get_target_node_healthy()

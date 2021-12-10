@@ -19,6 +19,7 @@ if __name__ == "__main__":
                      facility_conf=cfg['facilities'],
                      virus_conf=cfg['virus'],
                      people_conf=cfg['people'],
+                     log_path=cfg['files']['log_path'],
                      city_data=city_df,
                      age_dist=cfg['people']['age_dist'],
                      severity_dist=cfg['virus']['infection_severity_dist'],
@@ -29,4 +30,4 @@ if __name__ == "__main__":
         model.step()
         d = time.time() - t
         r = model.datacollector.get_model_vars_dataframe().iloc[-1].values
-        print(f'{i}: {model.date} - Duration: {d},  I: {r[0]}, N: {r[1]}, D: {r[2]}, H: {r[3]}, P: {r[4]}')
+        print(f'{i}: {model.day}:{model.weekday}:{model.hour} - Duration: {d},  I: {r[0]}, N: {r[1]}, D: {r[2]}, H: {r[3]}, P: {r[4]}')

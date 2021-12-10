@@ -7,8 +7,7 @@ files:
   write_every: 1000000
 
 model:
-  start_datetime: 01-11-2021 00:01
-  save_every: 2
+  save_every: 48
   step_size: 1
   hospital_efficiency: 0.3
   initial_infected: 50
