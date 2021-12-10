@@ -1,7 +1,7 @@
 import pickle
 import random
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import networkx as nx
 import numpy as np
@@ -89,7 +89,11 @@ class EpiModel(Model):
             self.day += 1
             self.weekday = (self.weekday + 1) % 7
 
-    def step(self):
+    def step(self) -> None:
+        """
+        Perform a simulation step
+        :return:
+        """
         self.datacollector.collect(self)
         self.scheduler.step()
         self.do_time_step(self.step_size)
@@ -98,7 +102,13 @@ class EpiModel(Model):
             self.save_model(self.checkpoint_directory)
         self.logger.write_log()
 
-    def distribute_osmid_by_building_type(self, data_frame, building_types):
+    def distribute_osmid_by_building_type(self, data_frame: pd.DataFrame, building_types: list) -> None:
+        """
+        Distribute building OSMIDs from the dataframe into respective building types in the simulator
+        :param data_frame: The configuration pandas DataFrame
+        :param building_types: list of available building types
+        :return:
+        """
         groups_df = data_frame[data_frame['type'] != 'building']
         groups_df = groups_df.groupby('type')['osmid'].apply(list).reset_index(name='osmid')
         for ind, t in enumerate(building_types):
@@ -111,7 +121,16 @@ class EpiModel(Model):
                 continue
             self.osmid_by_building_type['other_work_types'].extend(groups_df[groups_df['type'] == t]['osmid'].values[0])
 
-    def create_graph(self, data_frame: pd.DataFrame, building_params):
+    def create_graph(self, data_frame: pd.DataFrame, building_floor_probs: dict) -> nx.Graph:
+        """
+        Create buildings according to the configuration
+        :param data_frame: The configuration pandas DataFrame
+        :type data_frame: pandas.DataFrame
+        :param building_floor_probs: The probability of building having that many floors
+        :type building_floor_probs: dict
+        :return: The NetworkX graph of buildings
+        :rtype: networkx.Graph
+        """
         if data_frame is None:
             raise ValueError('A valid data frame needs to be provided')
         graph = nx.Graph()
@@ -119,12 +138,21 @@ class EpiModel(Model):
             building = building[1]
             b = Building(building[0], wkt.loads(building[1]), building[4], building[2])
             self.districts[building[4]].buildings.append(building[0])
-            floors_amount = random.choices(list(building_params.keys()), weights=list(building_params.values()))[0]
+            floors_amount = random.choices(list(building_floor_probs.keys()), weights=list(building_floor_probs.values()))[0]
             b.n_apartments = get_apartments_number(floors_amount)
             graph.add_node(building[0], building=b)
         return graph
 
-    def get_closest_osmid(self, osmid, btype):
+    def get_closest_osmid(self, osmid: int, btype: str) -> int:
+        """
+        Get the closest building OSMID of the given type from the given building OSMID
+        :param osmid: The OSMID of the initial building
+        :type osmid: int
+        :param btype: The building type we want to get
+        :type btype: str
+        :return: The OSMID of the closest building of the given building type
+        :rtype: int
+        """
         distances = [self.graph.nodes[osmid]["building"].coordinates.distance(self.graph.nodes[id]["building"].coordinates) for id in self.osmid_by_building_type[btype]]
         osmid = self.osmid_by_building_type[btype][np.argmin(distances)]
         assert osmid is not None
@@ -132,7 +160,18 @@ class EpiModel(Model):
 
     def distribute_people(self, district: District,
                           age_dist: Tuple[float],
-                          gender_dist: Tuple[float] = (0.5, 0.5)):
+                          gender_dist: Tuple[float] = (0.5, 0.5)) -> None:
+        """
+        Distribute people into the buildings of the given District, assign workplaces, study places
+        :param district: The District where we want to distribute the people
+        :type district: District
+        :param age_dist: The distribution of each age group [(0-4),(5-19),(20-29),(30-63),(64-120)]
+        :type age_dist: Tuple[float,...]
+        :param gender_dist: The Distribution of each gender
+        :type gender_dist: Tuple[float]
+        :return: None
+        :rtype: None
+        """
         for ind in tqdm(range(district.population)):
             while True:
                 building_osmid = random.choice(district.buildings)
@@ -179,7 +218,11 @@ class EpiModel(Model):
             self.grid.place_agent(agent, building_osmid)
             self.scheduler.add(agent)
 
-    def get_b_ids_by_types(self, types: List[str]):
+    def get_b_ids_by_types(self, types: List[str]) -> list:
+        """
+        Get building_ids of the given type: deprecated
+        :rtype: list
+        """
         ids = []
         for (p, d) in self.graph.nodes(data=True):
             for t in types:
@@ -187,7 +230,14 @@ class EpiModel(Model):
                     ids.append(p)
         return ids
 
-    def save_model(self, checkpoint_folder='checkpoints'):
+    def save_model(self, checkpoint_folder: Union[str, Path] = 'checkpoints') -> None:
+        """
+        Save the model as a pickle file
+        :param checkpoint_folder: The folder where the checkpoint shall be saved
+        :type checkpoint_folder: str or Path
+        :return: None
+        :rtype: None
+        """
         Path(checkpoint_folder).mkdir(parents=True, exist_ok=True)
         with open(f'{checkpoint_folder}/checkpoint_{self.day}_{self.hour}.pickle', 'wb') as f:
             pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)

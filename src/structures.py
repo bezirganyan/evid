@@ -1,24 +1,44 @@
 import math
 import random
-import json
 from operator import itemgetter
+from typing import Union
 
+from shapely.geometry import Point, Polygon
 from mesa import Agent
 import numpy as np
-from numpy.random import choice
 
 from src.utils import Condition, compute_inf_prob, Severity
 
 
-def rand_bin_array(K, N):
-    arr = np.zeros(N).astype(int)
-    arr[:K] = 1
+def rand_bin_array(k: int, n: int) -> np.ndarray:
+    """
+    Generate a random binary array with the given proportions: Works faster than np.random.choice or random.choices
+    :param k: number of 1s
+    :type k: int
+    :param n: number of elements
+    :type n: int
+    :return: Binary array
+    :rtype: numpy.ndarray
+    """
+    arr = np.zeros(n).astype(int)
+    arr[:k] = 1
     np.random.shuffle(arr)
     return arr
 
 
 class District:
+    """
+    Container for buildings in the district
+    """
     def __init__(self, uid: int, name: str, population: int):
+        """
+        :param uid: unique ID for the district
+        :type uid: int
+        :param name: Name of the district
+        :type name: str
+        :param population: number of people living in the district
+        :type population: int
+        """
         self.id = uid
         self.name = name
         self.buildings = []
@@ -26,7 +46,20 @@ class District:
 
 
 class Building:
-    def __init__(self, index, coordinates, district, building_type, n_apartments=None):
+    def __init__(self, index: int, coordinates: Union[Point, Polygon], district: int,
+                 building_type: str, n_apartments: int = None):
+        """
+        :param index: A Unique ID for the building, same as the OSMID of the building in the OpenStreetMaps
+        :type index: int
+        :param coordinates: The coordinates of the building from OpenStreetMaps
+        :type coordinates: shaply.geometry.Point, shaply.geometry.Polygon
+        :param district: The district ID
+        :type district: int
+        :param building_type: The type of the building
+        :type building_type: str
+        :param n_apartments: Number of apartments in the building [Optional, required for residential buildings]
+        :type n_apartments: int
+        """
         self.index = index
         self.coordinates = coordinates
         self.n_apartments = n_apartments
@@ -38,7 +71,18 @@ class Building:
             self.apartments[0] = []
             self.n_apartments = 1
 
-    def place_agent(self, agent):
+    def place_agent(self, agent: Agent) -> None:
+        """
+        Place the agent inside the building. If the building is hospital, and the agent is places as a patient,
+        then the agent will only be placed if there are enough ICU beds available: ie `hospital_beds > 0`.
+        If the building is residential, the agent will be placed in their apartment, otherwise they will be placed
+        in the apartment 0. Non-residential buildings have only one apartment: 0
+
+        :param agent: The agent which will be placed
+        :type agent: Agent
+        :return: None
+        :rtype: None
+        """
         if self.building_type == 'hospital' and \
                 agent.condition == Condition.Infected and \
                 agent.severity == Severity.severe and \
@@ -62,7 +106,14 @@ class Building:
             self.apartments[0].append(agent)
         agent.pos = self.index
 
-    def remove_agent(self, agent):
+    def remove_agent(self, agent: Agent) -> None:
+        """
+        Remove the agent from the building.
+        :param agent: The agent which will be removed
+        :type agent: Agent
+        :return: None
+        :rtype: None
+        """
         if self.building_type == 'hospital' and agent.condition == Condition.Healed and agent.in_hospital:
             agent.model.hospital_beds += 1
             agent.in_hospital = False
@@ -87,6 +138,22 @@ class Building:
 
 class EpiAgent(Agent):
     def __init__(self, unique_id: int, model, age: int, gender: int, work_place: tuple, study_place: tuple):
+        """
+        :param unique_id: a unique ID for the aent
+        :type unique_id: int
+        :param model: an instance of the EpiModel class
+        :type model: EpiModel
+        :param age: the index of the age group of the agent [(0-4),(5-19),(20-29),(30-63),(64-120)]
+        :type age: int
+        :param gender: The gender of the agent
+        :type gender: int
+        :param work_place: the workplace of the agent, a tuple where the first element is the facility type,
+        the second: facility id
+        :type work_place: tuple[str, int]
+        :param study_place: the study place of the agent, a tuple where the first element is the facility type,
+        the second: facility id
+        :type study_place: tuple[str, int]
+        """
         super().__init__(unique_id, model)
         self.condition = Condition.Not_infected
         self.prev_pos = None
@@ -104,7 +171,12 @@ class EpiAgent(Agent):
         self.encountered_agents = set()
         self.daily_contacts = []
 
-    def step(self):
+    def step(self) -> None:
+        """
+        Performs a simulation step for the agent. No need to call manually, will be called by the scheduler
+        :return: None
+        :rtype: None
+        """
         if self.hours_infected > self.model.healing_period:
             self.condition = Condition.Healed
 
@@ -122,10 +194,10 @@ class EpiAgent(Agent):
         if self.countdown_after_infected is not None and self.countdown_after_infected > 0:
             self.countdown_after_infected -= self.model.step_size
 
-    def advance(self):
+    def advance(self) -> None:
         self.infect()
 
-    def infect(self):
+    def infect(self) -> None:
         if self.condition == Condition.Dead:
             self.model.scheduler.remove(self)
             return
@@ -152,11 +224,11 @@ class EpiAgent(Agent):
                                         mwd=vc['mwd'], conc_b=vc['conc_b'], conc_s=vc['conc_s'], depo=vc['depo'],
                                         atv=self.model.people_conf['atv'][self.age])
             # infected_candidates = np.random.choice([0, 1], p=(1 - inf_prob, inf_prob), size=len(contacted_agents))
-            infected_candidates = rand_bin_array(int(inf_prob*len(contacted_agents)), len(contacted_agents))
+            infected_candidates = rand_bin_array(int(inf_prob * len(contacted_agents)), len(contacted_agents))
             for agent, inf in zip(contacted_agents, infected_candidates):
                 if self.unique_id == agent.unique_id: continue
                 self.daily_contacts.append(",".join(list(map(str, [self.unique_id, agent.unique_id,
-                                                                   self.model.day,self.model.weekday,
+                                                                   self.model.day, self.model.weekday,
                                                                    self.model.hour, self.age,
                                                                    agent.age, btm, building.district, building.index,
                                                                    inf]))))
@@ -167,13 +239,13 @@ class EpiAgent(Agent):
                 if self.unique_id == agent.unique_id or (agent.unique_id in self.encountered_agents): continue
                 agent.encountered_agents.add(self.unique_id)
                 self.daily_contacts.append(",".join(list(map(str, [self.unique_id, agent.unique_id,
-                                                                   self.model.day,self.model.weekday,
+                                                                   self.model.day, self.model.weekday,
                                                                    self.model.hour, self.age,
                                                                    agent.age, btm, building.district, building.index,
                                                                    0]))))
             self.encountered_agents.clear()
 
-    def move(self):
+    def move(self) -> None:
         if self.condition == Condition.Dead:
             return
         if self.in_hospital and self.condition == Condition.Infected:
@@ -221,7 +293,8 @@ class EpiAgent(Agent):
             to_node = self.address[0]
             assert to_node is not None
         elif to_node_type in ['school', 'kindergarten', 'university']:
-            to_node = self.study_place[1] if self.study_place is not None and self.study_place[1] else self.get_target_node_healthy()
+            to_node = self.study_place[1] if self.study_place is not None and self.study_place[
+                1] else self.get_target_node_healthy()
             assert to_node is not None
         elif to_node_type == 'work':
             to_node = self.work_place[1] if self.work_place is not None else self.get_target_node_healthy()
@@ -231,7 +304,12 @@ class EpiAgent(Agent):
             assert to_node is not None
         return to_node
 
-    def set_infected(self):
+    def set_infected(self) -> None:
+        """
+        Set the agent as infected, assign severity and countdown for incubation period
+        :return: None
+        :rtype: None
+        """
         self.condition = Condition.Infected
         self.severity = \
             random.choices(list(Severity), weights=[self.model.severity_dist[s.name] for s in list(Severity)])[0]
