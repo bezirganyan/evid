@@ -15,7 +15,7 @@ from tqdm import tqdm
 from src.spaces import EpiNetworkGrid
 from src.structures import EpiAgent, District, Building
 from src.utils import Condition, compute_infected, compute_not_infected, compute_dead, compute_healed, \
-    get_healthcare_potential, get_apartments_number, Logger
+    get_healthcare_potential, get_apartments_number, Logger, Severity
 
 
 class EpiModel(Model):
@@ -32,11 +32,13 @@ class EpiModel(Model):
                  step_size: int = 1,
                  hospital_efficiency: float = 0.3,
                  save_every: int = 24,
+                 negative_sample_proportion: float = 1.0,
                  severity_dist: dict = {"asymptomatic": 0.24, "mild": 0.56, "severe": 0.2},
                  infection_countdown_dist: dict = {"loc": 48, "scale": 7},
                  log_path='output.csv',
                  **kwargs):
         super().__init__()
+        self.negative_sample_proportion = negative_sample_proportion
         self.people_conf = people_conf
         self.virus_conf = virus_conf
         self.save_every = save_every
@@ -69,11 +71,14 @@ class EpiModel(Model):
         self.logger = Logger(log_path, self)
 
         self.building_type_mapping = {t: i for i, t in enumerate(list(facility_conf.keys()))}
+        print(self.building_type_mapping)
         for d in self.districts.values():
             self.distribute_people(d, age_dist)
 
         for a in self.random.choices(self.scheduler.agents, k=initial_infected):
             a.set_infected()
+            a.countdown_after_infected = 0
+            a.severity = Severity.asymptomatic
 
         self.datacollector = DataCollector(model_reporters={
             "Infected": compute_infected,
@@ -214,7 +219,8 @@ class EpiModel(Model):
                                random.choice(self.osmid_by_building_type['other_work_types'])]
                 work_place = (8, (random.choices(work_places,
                                                  weights=(0.6, 0.4))[0])) if work_none is not None else None
-            agent = EpiAgent(int(f'{str(district.id*100 + 10)[:3]}{ind}'), self, age, gender, work_place, study_place)
+            agent = EpiAgent(int(f'{str(district.id*100 + 10)[:3]}{ind}'), self, age, gender, work_place, study_place,
+                             self.negative_sample_proportion)
             self.grid.place_agent(agent, building_osmid)
             self.scheduler.add(agent)
 

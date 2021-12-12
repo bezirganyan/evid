@@ -137,7 +137,8 @@ class Building:
 
 
 class EpiAgent(Agent):
-    def __init__(self, unique_id: int, model, age: int, gender: int, work_place: tuple, study_place: tuple):
+    def __init__(self, unique_id: int, model, age: int, gender: int, work_place: tuple, study_place: tuple,
+                 negative_sample_proportion: float = 1.0):
         """
         :param unique_id: a unique ID for the aent
         :type unique_id: int
@@ -153,8 +154,11 @@ class EpiAgent(Agent):
         :param study_place: the study place of the agent, a tuple where the first element is the facility type,
         the second: facility id
         :type study_place: tuple[str, int]
+        :param negative_sample_proportion: What percentage of the negative samples to write to logs [Default: 1]
+        :type negative_sample_proportion: float
         """
         super().__init__(unique_id, model)
+        self.negative_sample_proportion = negative_sample_proportion
         self.condition = Condition.Not_infected
         self.prev_pos = None
         self.hours_infected = 0
@@ -215,7 +219,7 @@ class EpiAgent(Agent):
         if contacted_agents is None:
             return
         contacted_agents = contacted_agents if isinstance(contacted_agents, tuple) else (contacted_agents,)
-        if self.condition == Condition.Infected:
+        if self.condition == Condition.Infected and self.countdown_after_infected <= 0:
             fc = self.model.facility_conf[building_type]
             vc = self.model.virus_conf
             inf_prob = compute_inf_prob(rlwr=fc['rlwr'], area=fc['area'], height=fc['height'],
@@ -225,6 +229,7 @@ class EpiAgent(Agent):
                                         atv=self.model.people_conf['atv'][self.age])
             # infected_candidates = np.random.choice([0, 1], p=(1 - inf_prob, inf_prob), size=len(contacted_agents))
             infected_candidates = rand_bin_array(int(inf_prob * len(contacted_agents)), len(contacted_agents))
+            # infected_candidates = np.nonzero((np.random.random(len(contacted_agents)) < inf_prob).astype(int))
             for agent, inf in zip(contacted_agents, infected_candidates):
                 if self.unique_id == agent.unique_id: continue
                 self.daily_contacts.append(",".join(list(map(str, [self.unique_id, agent.unique_id,
@@ -235,7 +240,7 @@ class EpiAgent(Agent):
                 if inf and agent.condition == Condition.Not_infected:
                     agent.set_infected()
         else:
-            for agent in contacted_agents:
+            for agent in contacted_agents[:int(len(contacted_agents) * self.negative_sample_proportion)]:
                 if self.unique_id == agent.unique_id or (agent.unique_id in self.encountered_agents): continue
                 agent.encountered_agents.add(self.unique_id)
                 self.daily_contacts.append(",".join(list(map(str, [self.unique_id, agent.unique_id,
