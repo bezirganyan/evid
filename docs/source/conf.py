@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath('../..'))
 
 # -- Project information -----------------------------------------------------
 
-project = ''
+project = 'Evid'
 copyright = '2021, Grigor Bezirganyan, Henrik Sergoyan, Hrant Grigoryan, Suren Dombayev'
 author = 'Grigor Bezirganyan, Henrik Sergoyan, Hrant Grigoryan, Suren Dombayev'
 
