@@ -1,29 +1,39 @@
-evid package
-============
+evid.model module
+-----------------
 
-Subpackages
------------
-
-.. toctree::
-   :maxdepth: 4
-
-   evid.src
-
-Submodules
-----------
-
-evid.run module
----------------
-
-.. automodule:: evid.run
+.. automodule:: evid.model
    :members:
    :undoc-members:
    :show-inheritance:
 
-evid.test module
-----------------
+evid.move\_distribution module
+------------------------------
 
-.. automodule:: evid.test
+.. automodule:: evid.move_distribution
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+evid.spaces module
+------------------
+
+.. automodule:: evid.spaces
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+evid.structures module
+----------------------
+
+.. automodule:: evid.structures
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+evid.utils module
+-----------------
+
+.. automodule:: evid.utils
    :members:
    :undoc-members:
    :show-inheritance:

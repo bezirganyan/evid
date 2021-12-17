@@ -6,9 +6,15 @@
 Welcome to Evid's documentation!
 ================================
 
+Evid is an open-source agent-based epidemic simulator, to simulate spreads of epidemic
+in big cities.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
+   run
+   modules
 
 
 

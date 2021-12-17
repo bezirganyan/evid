@@ -7,18 +7,21 @@ from shapely.geometry import Point, Polygon
 from mesa import Agent
 import numpy as np
 
-from src.utils import Condition, compute_inf_prob, Severity
+from .utils import Condition, compute_inf_prob, Severity
 
 
 def rand_bin_array(k: int, n: int) -> np.ndarray:
-    """
-    Generate a random binary array with the given proportions: Works faster than np.random.choice or random.choices
-    :param k: number of 1s
-    :type k: int
-    :param n: number of elements
-    :type n: int
-    :return: Binary array
-    :rtype: numpy.ndarray
+    """Generate a random binary array with the given proportions: Works faster than np.random.choice or random.choices
+
+    Args:
+      k(int): number of 1s
+      n(int): number of elements
+      k: int: 
+      n: int: 
+
+    Returns:
+      numpy.ndarray: Binary array
+
     """
     arr = np.zeros(n).astype(int)
     arr[:k] = 1
@@ -27,9 +30,7 @@ def rand_bin_array(k: int, n: int) -> np.ndarray:
 
 
 class District:
-    """
-    Container for buildings in the district
-    """
+    """Container for buildings in the district"""
     def __init__(self, uid: int, name: str, population: int):
         """
         :param uid: unique ID for the district
@@ -46,6 +47,7 @@ class District:
 
 
 class Building:
+    """ """
     def __init__(self, index: int, coordinates: Union[Point, Polygon], district: int,
                  building_type: str, n_apartments: int = None):
         """
@@ -72,16 +74,18 @@ class Building:
             self.n_apartments = 1
 
     def place_agent(self, agent: Agent) -> None:
-        """
-        Place the agent inside the building. If the building is hospital, and the agent is places as a patient,
+        """Place the agent inside the building. If the building is hospital, and the agent is places as a patient,
         then the agent will only be placed if there are enough ICU beds available: ie `hospital_beds > 0`.
         If the building is residential, the agent will be placed in their apartment, otherwise they will be placed
         in the apartment 0. Non-residential buildings have only one apartment: 0
 
-        :param agent: The agent which will be placed
-        :type agent: Agent
-        :return: None
-        :rtype: None
+        Args:
+          agent(Agent): The agent which will be placed
+          agent: Agent: 
+
+        Returns:
+          None: None
+
         """
         if self.building_type == 'hospital' and \
                 agent.condition == Condition.Infected and \
@@ -107,12 +111,15 @@ class Building:
         agent.pos = self.index
 
     def remove_agent(self, agent: Agent) -> None:
-        """
-        Remove the agent from the building.
-        :param agent: The agent which will be removed
-        :type agent: Agent
-        :return: None
-        :rtype: None
+        """Remove the agent from the building.
+
+        Args:
+          agent(Agent): The agent which will be removed
+          agent: Agent: 
+
+        Returns:
+          None: None
+
         """
         if self.building_type == 'hospital' and agent.condition == Condition.Healed and agent.in_hospital:
             agent.model.hospital_beds += 1
@@ -137,6 +144,7 @@ class Building:
 
 
 class EpiAgent(Agent):
+    """ """
     def __init__(self, unique_id: int, model, age: int, gender: int, work_place: tuple, study_place: tuple,
                  negative_sample_proportion: float = 1.0):
         """
@@ -176,10 +184,13 @@ class EpiAgent(Agent):
         self.daily_contacts = []
 
     def step(self) -> None:
-        """
-        Performs a simulation step for the agent. No need to call manually, will be called by the scheduler
-        :return: None
-        :rtype: None
+        """Performs a simulation step for the agent. No need to call manually, will be called by the scheduler
+
+        Args:
+
+        Returns:
+          None: None
+
         """
         if self.hours_infected > self.model.healing_period:
             self.condition = Condition.Healed
@@ -199,9 +210,11 @@ class EpiAgent(Agent):
             self.countdown_after_infected -= self.model.step_size
 
     def advance(self) -> None:
+        """ """
         self.infect()
 
     def infect(self) -> None:
+        """ """
         if self.condition == Condition.Dead:
             self.model.scheduler.remove(self)
             return
@@ -249,6 +262,7 @@ class EpiAgent(Agent):
             self.encountered_agents.clear()
 
     def move(self) -> None:
+        """ """
         if self.condition == Condition.Dead:
             return
         if self.in_hospital and self.condition == Condition.Infected:
@@ -278,6 +292,7 @@ class EpiAgent(Agent):
         self.model.grid.move_agent(self, to_node)
 
     def get_target_node_healthy(self):
+        """ """
         if self.study_place is not None and self.pos == self.study_place[1]:
             if self.studies < self.study_place[0]:
                 self.studies += self.model.step_size
@@ -308,10 +323,13 @@ class EpiAgent(Agent):
         return to_node
 
     def set_infected(self) -> None:
-        """
-        Set the agent as infected, assign severity and countdown for incubation period
-        :return: None
-        :rtype: None
+        """Set the agent as infected, assign severity and countdown for incubation period
+
+        Args:
+
+        Returns:
+          None: None
+
         """
         self.condition = Condition.Infected
         self.severity = \
