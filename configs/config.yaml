@@ -1,10 +1,14 @@
 ---
 files:
   mobility_distribution_path: configs/mobility_distribution.npy
-  checkpoint_directory: experiments/experiment_1
+  checkpoint_directory: experiments/experiment_1/
   city_dataset_path: ./final_filtered_yerevan_plan.csv
-  log_path: experiments/experiment_1/output_small.csv
+  contact_log_path: experiments/experiment_1/contacts/
+  status_log_path: experiments/experiment_1/status/
+  statistics_log_path: experiments/experiment_1/
+  event_log_path: experiments/experiment_1/events.csv
   write_every: 1000000
+  random_seed: 42
 
 model:
   save_every: 48
@@ -13,7 +17,7 @@ model:
   initial_infected: 100
   population_number: 1080311
   hospital_beds: 2000
-  negative_sample_proportion: 0.005
+  negative_sample_proportion: 0.0005
 
 
 virus:

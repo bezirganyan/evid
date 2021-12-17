@@ -35,9 +35,15 @@ class EpiModel(Model):
                  negative_sample_proportion: float = 1.0,
                  severity_dist: dict = {"asymptomatic": 0.24, "mild": 0.56, "severe": 0.2},
                  infection_countdown_dist: dict = {"loc": 48, "scale": 7},
-                 log_path='output.csv',
+                 contact_log_path=None,
+                 status_log_path=None,
+                 statistics_log_path=None,
+                 random_seed: int = None,
                  **kwargs):
         super().__init__()
+        if random_seed:
+            random.seed(random_seed)
+            np.random.seed(random_seed)
         self.negative_sample_proportion = negative_sample_proportion
         self.people_conf = people_conf
         self.virus_conf = virus_conf
@@ -68,7 +74,7 @@ class EpiModel(Model):
         self.distribute_osmid_by_building_type(city_data, list(facility_conf.keys()))
         self.hospital_efficiency = hospital_efficiency
         self.step_counts = 0
-        self.logger = Logger(log_path, self)
+        self.logger = Logger(contact_log_path, status_log_path, statistics_log_path, self)
 
         self.building_type_mapping = {t: i for i, t in enumerate(list(facility_conf.keys()))}
         print(self.building_type_mapping)

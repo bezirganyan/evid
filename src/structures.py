@@ -234,8 +234,7 @@ class EpiAgent(Agent):
                 if self.unique_id == agent.unique_id: continue
                 self.daily_contacts.append(",".join(list(map(str, [self.unique_id, agent.unique_id,
                                                                    self.model.day, self.model.weekday,
-                                                                   self.model.hour, self.age,
-                                                                   agent.age, btm, building.district, building.index,
+                                                                   self.model.hour, building.index,
                                                                    inf]))))
                 if inf and agent.condition == Condition.Not_infected:
                     agent.set_infected()
@@ -245,8 +244,7 @@ class EpiAgent(Agent):
                 agent.encountered_agents.add(self.unique_id)
                 self.daily_contacts.append(",".join(list(map(str, [self.unique_id, agent.unique_id,
                                                                    self.model.day, self.model.weekday,
-                                                                   self.model.hour, self.age,
-                                                                   agent.age, btm, building.district, building.index,
+                                                                   self.model.hour, building.index,
                                                                    0]))))
             self.encountered_agents.clear()
 

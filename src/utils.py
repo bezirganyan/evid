@@ -1,30 +1,64 @@
 import enum
 import math
 import os
-import threading
 
 from tqdm import tqdm
 
 
 class Logger:
-    def __init__(self, log_path, model, write_every=None):
-        self.log_path = log_path
+    """
+    Logger manager
+    """
+    def __init__(self, contact_log_path, status_log_path, statistics_log_path, model, write_every=None):
+        self.statistics_log_path = statistics_log_path
+        self.contact_log_path = contact_log_path
+        self.status_log_path = status_log_path
         self.model = model
         self.write_every = write_every
-        directory = os.path.dirname(self.log_path)
-        os.makedirs(directory, mode=0o777, exist_ok=True)
-        with open(self.log_path, 'w+') as f:
-            print('agent_id,contact_id,day,dow,hour,agent_age,contact_age,building_type,district,building_osmid,infection',
-                  file=f)
+        if self.statistics_log_path:
+            directory = os.path.dirname(self.statistics_log_path)
+            os.makedirs(directory, mode=0o777, exist_ok=True)
+            with open(f'{self.statistics_log_path}/statistics.csv', 'w+') as f:
+                print('day,weekday,hour,infected,not_infected,dead,healed,icu_beds', file=f)
 
     def write_log(self):
-        with open(self.log_path, 'a') as f:
-            print("Writing Logs...")
+        if self.contact_log_path:
+            self.write_contact_log()
+        if self.status_log_path:
+            self.write_status_log()
+        if self.statistics_log_path:
+            self.write_statistics_log()
+
+    def write_contact_log(self):
+        directory = os.path.dirname(self.contact_log_path)
+        os.makedirs(directory, mode=0o777, exist_ok=True)
+        with open(f'{self.contact_log_path}/cont_{self.model.day}.csv', 'w+') as f:
+            print("Writing Contact Logs...")
+            print('agent_id,contact_id,day,dow,hour,building_osmid,infection',
+                  file=f)
             for agent in tqdm(self.model.scheduler.agents):
                 f.writelines('\n'.join(agent.daily_contacts))
                 if agent.daily_contacts:
                     f.write('\n')
                 agent.daily_contacts = []
+
+    def write_status_log(self):
+        directory = os.path.dirname(self.status_log_path)
+        os.makedirs(directory, mode=0o777, exist_ok=True)
+        with open(f'{self.status_log_path}/stat_{self.model.day}.csv', 'w+') as f:
+            print("Writing Status Logs...")
+            print('agent_id,day,in_hospital,condition,severity,building_osmid,age',
+                  file=f)
+            for agent in tqdm(self.model.scheduler.agents):
+                sev = agent.severity.name if agent.severity is not None else "healthy"
+                l = f'{agent.unique_id},{self.model.day},{agent.in_hospital},{agent.condition.name},{sev},{agent.address},{agent.age}'
+                f.write(l)
+                f.write('\n')
+
+    def write_statistics_log(self):
+        r = self.model.datacollector.get_model_vars_dataframe().iloc[-1].values
+        with open(f'{self.statistics_log_path}/statistics.csv', 'a+') as f:
+            print(f'{self.model.day},{self.model.weekday},{self.model.hour},{r[0]},{r[1]},{r[2]},{r[3]},{r[4]}', file=f)
 
 
 def compute_infected(model):
