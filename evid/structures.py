@@ -31,6 +31,7 @@ def rand_bin_array(k: int, n: int) -> np.ndarray:
 
 class District:
     """Container for buildings in the district"""
+
     def __init__(self, uid: int, name: str, population: int):
         """
         :param uid: unique ID for the district
@@ -48,6 +49,7 @@ class District:
 
 class Building:
     """ """
+
     def __init__(self, index: int, coordinates: Union[Point, Polygon], district: int,
                  building_type: str, n_apartments: int = None):
         """
@@ -145,6 +147,7 @@ class Building:
 
 class EpiAgent(Agent):
     """ """
+
     def __init__(self, unique_id: int, model, age: int, gender: int, work_place: tuple, study_place: tuple,
                  negative_sample_proportion: float = 1.0):
         """
@@ -194,6 +197,7 @@ class EpiAgent(Agent):
         """
         if self.hours_infected > self.model.healing_period:
             self.condition = Condition.Healed
+            self.model.healed_count += 1
 
         p = random.random()
         if self.condition == Condition.Infected:
@@ -215,7 +219,7 @@ class EpiAgent(Agent):
 
     def infect(self) -> None:
         """ """
-        if self.condition == Condition.Dead:
+        if self.condition == Condition.Dead or self.condition == Condition.Healed:
             self.model.scheduler.remove(self)
             return
         building = self.model.graph.nodes[self.pos]['building']
@@ -245,13 +249,14 @@ class EpiAgent(Agent):
             # infected_candidates = np.nonzero((np.random.random(len(contacted_agents)) < inf_prob).astype(int))
             for agent, inf in zip(contacted_agents, infected_candidates):
                 if self.unique_id == agent.unique_id: continue
-                self.daily_contacts.append(",".join(list(map(str, [self.unique_id, agent.unique_id,
-                                                                   self.model.day, self.model.weekday,
-                                                                   self.model.hour, building.index,
-                                                                   inf]))))
-                if inf and agent.condition == Condition.Not_infected:
-                    agent.set_infected()
-        else:
+                if agent.condition == Condition.Not_infected:
+                    self.daily_contacts.append(",".join(list(map(str, [self.unique_id, agent.unique_id,
+                                                                       self.model.day, self.model.weekday,
+                                                                       self.model.hour, building.index,
+                                                                       inf]))))
+                    if inf:
+                        agent.set_infected()
+        elif self.model.log_h2h_contacts:
             for agent in contacted_agents[:int(len(contacted_agents) * self.negative_sample_proportion)]:
                 if self.unique_id == agent.unique_id or (agent.unique_id in self.encountered_agents): continue
                 agent.encountered_agents.add(self.unique_id)

@@ -1,23 +1,25 @@
 ---
 files:
   mobility_distribution_path: configs/mobility_distribution.npy
-  checkpoint_directory: experiments/experiment_1/
+  checkpoint_directory: experiments/experiment_3/
   city_dataset_path: ./final_filtered_yerevan_plan.csv
-  contact_log_path: experiments/experiment_1/contacts/
-  status_log_path: experiments/experiment_1/status/
-  statistics_log_path: experiments/experiment_1/
-  event_log_path: experiments/experiment_1/events.csv
+  contact_log_path: experiments/experiment_3/contacts/
+  status_log_path: experiments/experiment_3/status/
+  statistics_log_path: experiments/experiment_3/
+  event_log_path: experiments/experiment_3/events.csv
   write_every: 1000000
   random_seed: 42
 
 model:
   save_every: 48
+  log_every: 24
   step_size: 1
   hospital_efficiency: 0.3
   initial_infected: 100
   population_number: 1080311
   hospital_beds: 2000
   negative_sample_proportion: 0.0005
+  log_h2h_contacts: false
 
 
 virus:
@@ -60,9 +62,9 @@ facilities:
   #          0 means no mask
   # speak_frac: fraction of speaking in the facility [0-100%]
   cafe:
-    contact_probability: 0.07
+    contact_probability: 0.1
     vol: 2
-    area: 5
+    area: 3
     height: 4
     rlwr: 5
     mask_in: 0
@@ -70,9 +72,9 @@ facilities:
     speak_frac: 60
 
   church:
-    contact_probability: 0.05
+    contact_probability: 0.001
     vol: 1
-    area: 30
+    area: 25
     height: 15
     rlwr: 2
     mask_in: 0
@@ -80,9 +82,9 @@ facilities:
     speak_frac: 10
 
   sport:
-    contact_probability: 0.05
+    contact_probability: 0.08
     vol: 2
-    area: 10
+    area: 9
     height: 4
     rlwr: 2
     mask_in: 0
@@ -90,9 +92,9 @@ facilities:
     speak_frac: 20
 
   shop:
-    contact_probability: 0.1
+    contact_probability: 0.2
     vol: 3
-    area: 7
+    area: 6
     height: 4
     rlwr: 2
     mask_in: 0
@@ -102,15 +104,15 @@ facilities:
   hospital:
     contact_probability: 0.005
     vol: 2
-    area: 20
+    area: 5
     height: 3
     rlwr: 2
-    mask_in: 0
-    mask_out: 0
+    mask_in: 0.7
+    mask_out: 0.5
     speak_frac: 10
 
   kindergarten:
-    contact_probability: 0.01
+    contact_probability: 0.02
     vol: 2
     area: 13
     height: 3
@@ -130,7 +132,7 @@ facilities:
     speak_frac: 40
 
   school:
-    contact_probability: 0.1
+    contact_probability: 0.5
     vol: 2
     area: 5
     height: 3
@@ -140,9 +142,9 @@ facilities:
     speak_frac: 40
 
   work:
-    contact_probability: 0.03
+    contact_probability: 0.04
     vol: 2
-    area: 13
+    area: 9
     height: 3
     rlwr: 2
     mask_in: 0
@@ -163,12 +165,12 @@ facilities:
       14: 0.1061
     contact_probability: 0.6
     vol: 2
-    area: 40
+    area: 60
     height: 2.5
     rlwr: 2
     mask_in: 0
     mask_out: 0
-    speak_frac: 40
+    speak_frac: 20
 
 people:
   age_dist:

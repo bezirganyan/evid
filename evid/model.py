@@ -33,15 +33,19 @@ class EpiModel(Model):
                  step_size: int = 1,
                  hospital_efficiency: float = 0.3,
                  save_every: int = 24,
+                 log_every: int = 24,
                  negative_sample_proportion: float = 1.0,
                  severity_dist: dict = {"asymptomatic": 0.24, "mild": 0.56, "severe": 0.2},
                  infection_countdown_dist: dict = {"loc": 48, "scale": 7},
                  contact_log_path=None,
                  status_log_path=None,
                  statistics_log_path=None,
+                 log_h2h_contacts=False,
                  random_seed: int = None,
                  **kwargs):
         super().__init__()
+        self.log_h2h_contacts = log_h2h_contacts
+        self.log_every = log_every
         if random_seed:
             random.seed(random_seed)
             np.random.seed(random_seed)
@@ -53,6 +57,7 @@ class EpiModel(Model):
         self.hour = 0
         self.weekday = 0
         self.facility_conf = facility_conf
+        self.healed_count = 0
         self.districts = dict()
         self.dead_count = 0
         for d_id in districts:
@@ -100,7 +105,7 @@ class EpiModel(Model):
         Args:
           step: int:  (Default value = 1)
 
-        Returns:
+        Returns: None
 
         """
         self.hour += step
@@ -124,7 +129,8 @@ class EpiModel(Model):
         self.step_counts += 1
         if self.step_counts % self.save_every == 0:
             self.save_model(self.checkpoint_directory)
-        self.logger.write_log()
+        if self.step_counts % self.log_every == 0:
+            self.logger.write_log()
 
     def distribute_osmid_by_building_type(self, data_frame: pd.DataFrame, building_types: list) -> None:
         """Distribute building OSMIDs from the dataframe into respective building types in the simulator

@@ -51,8 +51,8 @@ class Logger:
             print('agent_id,day,in_hospital,condition,severity,building_osmid,age',
                   file=f)
             for agent in tqdm(self.model.scheduler.agents):
-                sev = agent.severity.name if agent.severity is not None else "healthy"
-                l = f'{agent.unique_id},{self.model.day},{agent.in_hospital},{agent.condition.name},{sev},{agent.address},{agent.age}'
+                sev = agent.severity.value if agent.severity is not None else "-1"
+                l = f'{agent.unique_id},{self.model.day},{int(agent.in_hospital)},{agent.condition.value},{sev},{agent.address[0]},{agent.age}'
                 f.write(l)
                 f.write('\n')
 
@@ -97,7 +97,7 @@ def compute_healed(model):
     Returns:
 
     """
-    return sum(agent.condition == Condition.Healed for agent in model.scheduler.agents)
+    return model.healed_count
 
 
 def compute_not_infected(model):
