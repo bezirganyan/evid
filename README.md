@@ -24,6 +24,7 @@ Clone the project
 ```bash
   git clone https://github.com/bezirganyan/evid.git
 ```
+ The `yerevan_osm_data.csv` in the config file can be found at https://data.mendeley.com/datasets/7wwryn57tr/1. Please download this file from the above link and put in the project repository.
 
 Go to the project directory
 
@@ -45,7 +46,7 @@ Start a somilation run
 where `configs/config.yaml` is the default configuration file,
 which can be modified, and the `1440` is the number of simulation steps to perform. Since by default each simulation step corresponds to one real life hour, 1440 steps will generate 1440/24 = 60 days of data. number of simulation steps. By default one simulation step corresponds to one hour in the simulation world. 
 
- The `yerevan_osm_data.csv` in the config file can be found at https://data.mendeley.com/datasets/7wwryn57tr.
+
 
 
 
