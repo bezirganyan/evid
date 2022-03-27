@@ -16,8 +16,8 @@ def rand_bin_array(k: int, n: int) -> np.ndarray:
     Args:
       k(int): number of 1s
       n(int): number of elements
-      k: int: 
-      n: int: 
+      k: int:
+      n: int:
 
     Returns:
       numpy.ndarray: Binary array
@@ -83,7 +83,7 @@ class Building:
 
         Args:
           agent(Agent): The agent which will be placed
-          agent: Agent: 
+          agent: Agent:
 
         Returns:
           None: None
@@ -117,7 +117,7 @@ class Building:
 
         Args:
           agent(Agent): The agent which will be removed
-          agent: Agent: 
+          agent: Agent:
 
         Returns:
           None: None
@@ -236,7 +236,7 @@ class EpiAgent(Agent):
         if contacted_agents is None:
             return
         contacted_agents = contacted_agents if isinstance(contacted_agents, tuple) else (contacted_agents,)
-        if self.condition == Condition.Infected and self.countdown_after_infected <= 0:
+        if self.condition == Condition.Infected:
             fc = self.model.facility_conf[building_type]
             vc = self.model.virus_conf
             inf_prob = compute_inf_prob(rlwr=fc['rlwr'], area=fc['area'], height=fc['height'],
