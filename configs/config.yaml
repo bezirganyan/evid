@@ -2,7 +2,8 @@
 files:
   mobility_distribution_path: configs/mobility_distribution.npy
   checkpoint_directory: experiments/experiment_3/
-  city_dataset_path: ./final_filtered_yerevan_plan.csv
+  # The yerevan_osm_data.csv can be found at https://data.mendeley.com/datasets/7wwryn57tr/1. You can use other datasets for other cities.
+  city_dataset_path: ./yerevan_osm_data.csv
   contact_log_path: experiments/experiment_3/contacts/
   status_log_path: experiments/experiment_3/status/
   statistics_log_path: experiments/experiment_3/
