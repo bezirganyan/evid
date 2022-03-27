@@ -1,12 +1,13 @@
-from src.model import EpiModel
+from evid.model import EpiModel
 import pandas as pd
 import time
+import random
 import yaml
-from src.move_distribution import get_agent_movement_distribution
+from evid.move_distribution import get_agent_movement_distribution
 import sys
 
 
-
+random.seed(42)
 if __name__ == "__main__":
     with open(sys.argv[1], "r") as stream:
         cfg = yaml.safe_load(stream)
