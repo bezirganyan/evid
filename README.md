@@ -24,7 +24,7 @@ Clone the project
 ```bash
   git clone https://github.com/bezirganyan/evid.git
 ```
- The `yerevan_osm_data.csv` in the config file can be found at https://data.mendeley.com/datasets/7wwryn57tr/1. Please download this file from the above link and put in the project repository.
+ The `yerevan_osm_data.csv` in the config file can be found at https://data.mendeley.com/datasets/7wwryn57tr/2. Please download this file from the above link and put in the project repository.
 
 Go to the project directory
 
